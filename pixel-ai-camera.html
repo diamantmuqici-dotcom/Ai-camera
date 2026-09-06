@@ -1160,6 +1160,7 @@ const Rend={
 
 /* ══════════ 12 · IMAGE PROCESSOR (kernels in Blob Worker) ══════════ */
 const PROC_FN=function buildProc(){
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
   const clampU=v=>v<0?0:v>255?255:v|0;
   function lumaOf(d,i){return(d[i]*77+d[i+1]*150+d[i+2]*29)>>8;}
   function boxBlurLuma(d,w,h,r){
