@@ -87,6 +87,8 @@ For smoother Pixel preview:
 
 The live Pixel preview uses the native video path for smoothness. Expensive enhancement is reserved for captures and reader workflows.
 
+The default balanced camera request is 1080p so the first launch favors stable frame rate. Higher resolutions remain available in Settings.
+
 Normal Photo mode uses Fast Shot by default: the original is saved immediately, then the enhanced version replaces it in the local gallery when processing finishes. HDR and Super Resolution remain slower because they capture multiple frames by design.
 
 ## Limitations
