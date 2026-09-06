@@ -429,6 +429,9 @@ body.minimal #hudStrip,body.minimal #meterBox,body.minimal #histWrap{opacity:0;p
   <div class="head"><h3 style="font-size:15px">PRO CONTROLS</h3><button class="xclose" data-close="proPanel">✕</button></div>
   <div class="body">
     <div class="card"><h4>Hardware (only if camera exposes it)</h4><div id="hwCtl"></div></div>
+      <div class="card"><h4>Automatic AI controls</h4>
+        <div class="row"><div><div class="lbl">AUTO PRO</div><div class="sub">Adjust focus, exposure, color, gamma, contrast and detail by zoom</div></div><div class="tgl" data-t="sys.autoPro"></div></div>
+      </div>
     <div class="card"><h4>Software processing (clearly not hardware)</h4>
       <div class="row"><div class="lbl">Gain (ISO-like)</div><input class="rng" style="width:52%" type="range" data-r="pro.gain" min="50" max="300" value="100"></div>
       <div class="row"><div class="lbl">Contrast</div><input class="rng" style="width:52%" type="range" data-r="pro.contrast" min="50" max="180" value="100"></div>
@@ -650,7 +653,7 @@ const DEFAULTS={
   trk:{smooth:70,resp:60,autoCenter:true},
   stab:"med",
   gal:{keep:true,max:50},
-  sys:{wake:true,haptics:true,sound:true,motion:false,perf:"balanced",wakeSentinel:null},
+  sys:{wake:true,haptics:true,sound:true,motion:false,perf:"balanced",autoPro:true,wakeSentinel:null},
   ui:{minimal:false,grid:"3x3",hist:false,mag:false,nav:false,zebra:false,peaking:false,level:false},
   mode:"photo", textSub:"text",
   zoom:{target:1},
@@ -1884,15 +1887,27 @@ const Scene={
   }
 };
 const AutoPilot={
-  enabled:true,last:0,lastExposure:null,lastZoomMode:"",focusApplied:false,wbApplied:false,
-  toggle(){this.enabled=!this.enabled;toast(this.enabled?"AUTO CAMERA on":"AUTO CAMERA off",this.enabled?"ok":"",1600);},
+  enabled:true,last:0,lastExposure:null,lastZoomMode:"",lastProfile:"",focusApplied:false,wbApplied:false,
+  toggle(){this.enabled=!this.enabled;S.sys.autoPro=this.enabled;Settings.save();toast(this.enabled?"AUTO CAMERA on":"AUTO CAMERA off",this.enabled?"ok":"",1600);},
   tick(){
+    this.enabled=!!S.sys.autoPro;
     if(!this.enabled||now()-this.last<700||APP.state!=="ready")return;
     this.last=now();
     const z=Zoom.digital(),mode=z>=8?"high":z>=3?"med":"off";
-    if(mode!==this.lastZoomMode){
+    const low=Ana.mean!==undefined&&Ana.mean<70;
+    const profile=mode+":"+(low?"low":"normal");
+    if(profile!==this.lastProfile){
+      this.lastProfile=profile;
       this.lastZoomMode=mode;S.stab=mode;UI.chips();
       S.enh.localContrast=z>=2;S.enh.sharpen=true;S.enh.sr=z>=6;
+      S.pro.gain=low?108:100;
+      S.pro.gamma=low?108:100;
+      S.pro.contrast=mode==="high"?118:mode==="med"?110:100;
+      S.pro.sat=mode==="high"?106:100;
+      S.pro.sharp=mode==="high"?48:mode==="med"?40:35;
+      S.pro.denoise=low?55:mode==="high"?42:25;
+      const fd=APP.caps.focusDistance;
+      if(fd){const value=fd.min+(fd.max-fd.min)*clamp((z-1)/20,0,1);Caps.apply({focusDistance:value});}
     }
     if(!this.focusApplied&&Array.isArray(APP.caps.focusMode)&&APP.caps.focusMode.includes("continuous-auto")){
       this.focusApplied=true;Caps.apply({focusMode:"continuous-auto"});
