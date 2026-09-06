@@ -16,6 +16,7 @@ A browser-based computational camera for Android Chrome and desktop browsers.
 - Tap-to-focus and continuous autofocus when supported
 - License plate enhancement and OCR
 - Smart Plate mode: steady high-zoom automatic plate capture and OCR
+- Fast Shot mode: saves the original immediately and enhances in the background
 - Sign reader and OCR
 - Document scanner
 - Local IndexedDB gallery
@@ -78,6 +79,8 @@ For smoother Pixel preview:
 - Plate and sign readers use capped working images to avoid mobile memory spikes.
 
 The live Pixel preview uses the native video path for smoothness. Expensive enhancement is reserved for captures and reader workflows.
+
+Normal Photo mode uses Fast Shot by default: the original is saved immediately, then the enhanced version replaces it in the local gallery when processing finishes. HDR and Super Resolution remain slower because they capture multiple frames by design.
 
 ## Limitations
 

@@ -460,6 +460,7 @@ body.minimal #hudStrip,body.minimal #meterBox,body.minimal #histWrap{opacity:0;p
       <div class="row"><div class="lbl">Motion sensors (shake / level)</div><div class="tgl" data-t="sys.motion"></div></div>
     </div>
     <div class="card"><h4>Photo</h4>
+      <div class="row"><div><div class="lbl">FAST SHOT</div><div class="sub">Save instantly, enhance in background</div></div><div class="tgl" data-t="cap.fastShot"></div></div>
       <div class="row"><div class="lbl">Save ORIGINAL + enhanced copy</div><div class="tgl" data-t="cap.saveOriginal"></div></div>
       <div class="row"><div class="lbl">Timestamp watermark</div><div class="tgl" data-t="cap.timestamp"></div></div>
       <div class="row"><div class="lbl">Watermark “PIXEL AI ZOOM”</div><div class="tgl" data-t="cap.watermark"></div></div>
@@ -639,7 +640,7 @@ function detectBrowser(){const ua=navigator.userAgent;
 /* ══════════ 01 · STATE & SETTINGS ══════════ */
 const DEFAULTS={
   cam:{deviceId:"",facing:"environment",res:"1440"},
-  cap:{timer:0,flash:"off",aspect:"4:3",saveOriginal:true,timestamp:false,watermark:false,geo:false,
+  cap:{timer:0,flash:"off",aspect:"4:3",saveOriginal:true,fastShot:true,timestamp:false,watermark:false,geo:false,
        burst:5,bestFrame:false,autoStable:false},
   vid:{mic:true,fps:30},
   enh:{quality:"balanced",auto:true,denoise:true,sharpen:true,localContrast:true,contrast:true,
@@ -1406,6 +1407,13 @@ const Gal={
       await this.trim();}
     else{this.mem.push(item);if(this.mem.length>S.gal.max)this.mem.shift();}
     this.refreshThumb();},
+  async update(id,patch){
+    if(this.db){const all=await this.all(),item=all.find(x=>x.id===id);if(!item)return;
+      Object.assign(item,patch);await new Promise((res,rej)=>{const tx=this.db.transaction("items","readwrite");
+        tx.objectStore("items").put(item);tx.oncomplete=res;tx.onerror=rej;});}
+    else{const item=this.mem.find(x=>x.id===id);if(item)Object.assign(item,patch);}
+    this.refreshThumb();
+  },
   async trim(){const all=await this.all();
     if(all.length>S.gal.max){const del=all.slice(S.gal.max);
       const tx=this.db.transaction("items","readwrite"),st=tx.objectStore("items");
@@ -1543,9 +1551,22 @@ const Capture={
         tag="HDR";canvas=await this.hdrCapture((p,l)=>{Progress.open("SMART HDR",l);Progress.set(p,l);});
       }else canvas=this.grabFullRes();
       if(S.cap.flash==="on")await this.torch(false);
-      await this.process(canvas,tag,opts);
+      const fast=opts.fast!==false&&S.cap.fastShot&&!srOn&&!S.enh.hdr&&S.mode==="photo";
+      if(fast){
+        const original=await this.saveImmediate(canvas,tag);
+        APP.busy=false;UI.setState("ready");
+        toast("Photo saved · enhancing in background","ok",1800);
+        this.process(canvas,tag,{...opts,background:true,existingId:original.id}).catch(e=>toast("Enhancement failed: "+e.message,"err",3500));
+      }else await this.process(canvas,tag,opts);
     }catch(e){toast("Capture failed: "+e.message,"err");}
     finally{APP.busy=false;UI.setState("ready");}
+  },
+  async saveImmediate(canvas,tag){
+    const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.95));
+    const item={type:"photo",blob,enhancedBlob:null,meta:{mode:tag,zoom:Zoom.target.toFixed(1),
+      zoomKind:Zoom.target<=Zoom.hwMax()+.01&&Zoom.hwMax()>1?"HARDWARE":"DIGITAL/AI",
+      res:`${canvas.width}×${canvas.height}`,lens:APP.lensGuess,fps:APP.fps}};
+    await Gal.add(item);return item;
   },
   async hdrCapture(prog){
     const c=APP.caps.exposureCompensation,base=APP.settings.exposureCompensation||0;
@@ -1564,8 +1585,8 @@ const Capture={
     out.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(res.buf),W,H),0,0);
     return out;},
   async process(canvas,tag,opts){
-    UI.setState("processing");
-    Progress.open(tag+" processing","Preparing…");
+    if(!opts.background)UI.setState("processing");
+    if(!opts.background)Progress.open(tag+" processing","Preparing…");
     try{
       const g=canvas.getContext("2d",{willReadFrequently:true});
       const origBlob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.93));
@@ -1574,26 +1595,27 @@ const Capture={
         const mode=S.mode==="text"?(S.textSub==="text"?"text":"normal"):"normal";
         const id=g.getImageData(0,0,canvas.width,canvas.height);
         const out=await Proc.runPipeline(id,{pro:S.pro,enh:S.enh,quality:S.enh.quality,
-          shAmt:S.enh.amount,dnAmt:S.enh.dnAmount,mode},(p,l)=>Progress.set(p,l));
+          shAmt:S.enh.amount,dnAmt:S.enh.dnAmount,mode},(p,l)=>{if(!opts.background)Progress.set(p,l);});
         let oc=document.createElement("canvas");oc.width=out.w;oc.height=out.h;
         oc.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(out.buf),out.w,out.h),0,0);
         if(S.enh.upscale){ // interpolation upscale — labelled as such in metadata
           const u=document.createElement("canvas");u.width=Math.round(out.w*1.5);u.height=Math.round(out.h*1.5);
           const ug=u.getContext("2d");ug.imageSmoothingEnabled=true;ug.imageSmoothingQuality="high";
-          ug.drawImage(oc,0,0,u.width,u.height);oc=u;Progress.set(0.96,"Upscaled ×1.5 (interpolated)");}
+          ug.drawImage(oc,0,0,u.width,u.height);oc=u;if(!opts.background)Progress.set(0.96,"Upscaled ×1.5 (interpolated)");}
         this.stamp(oc);
         finalBlob=await new Promise(r=>oc.toBlob(r,"image/jpeg",0.93));
       }else this.stampText(origBlob);
       const zoomKind=Zoom.target<=Zoom.hwMax()+0.01&&Zoom.hwMax()>1?"HARDWARE":"DIGITAL/AI";
-      await Gal.add({type:"photo",blob:finalBlob,
+      const result={type:"photo",blob:finalBlob,
         enhancedBlob:S.cap.saveOriginal&&S.enh.quality!=="off"?origBlob:null,
         meta:{mode:tag,zoom:Zoom.target.toFixed(1),zoomKind,res:`${canvas.width}×${canvas.height}`,
-          lens:APP.lensGuess,fps:APP.fps}});
-      Progress.set(1,"Saved to gallery");await sleep(280);Progress.close();
-      toast(`${tag} saved · ${Zoom.target.toFixed(1)}× ${zoomKind}`,"ok");
+          lens:APP.lensGuess,fps:APP.fps}};
+      if(opts.existingId)await Gal.update(opts.existingId,result);else await Gal.add(result);
+      if(!opts.background){Progress.set(1,"Saved to gallery");await sleep(280);Progress.close();
+        toast(`${tag} saved · ${Zoom.target.toFixed(1)}× ${zoomKind}`,"ok");}
       Gal.refreshThumb();
-    }catch(e){Progress.close();toast("Processing failed: "+e.message,"err");}
-    UI.setState("ready");
+    }catch(e){if(!opts.background)Progress.close();toast("Processing failed: "+e.message,"err");}
+    if(!opts.background)UI.setState("ready");
   },
   stamp(canvas){const g=canvas.getContext("2d");
     g.font=`${Math.max(14,canvas.width/60)}px Roboto, sans-serif`;
