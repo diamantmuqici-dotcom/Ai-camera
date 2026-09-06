@@ -1,0 +1,12 @@
+{
+  "name": "Pixel AI Camera",
+  "short_name": "Pixel Camera",
+  "description": "Local computational camera with zoom, enhancement, OCR, and tracking.",
+  "start_url": "./pixel-ai-camera.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#050507",
+  "theme_color": "#050507",
+  "icons": []
+}

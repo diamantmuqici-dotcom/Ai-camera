@@ -7,6 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
 <title>PIXEL AI ZOOM — Computational Camera</title>
 <style>
 /* ============================================================
@@ -2305,6 +2306,8 @@ async function boot(){
     up();b.addEventListener("levelchange",up);}).catch(()=>{});
   requestAnimationFrame(Loop.run);
 }
+if("serviceWorker"in navigator&&location.protocol!=="file:")
+  navigator.serviceWorker.register("./service-worker.js").catch(e=>console.warn("[offline cache]",e));
 window.addEventListener("load",boot);
 </script>
 </body>

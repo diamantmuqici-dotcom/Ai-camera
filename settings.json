@@ -1,0 +1,32 @@
+{
+  "profiles": {
+    "fast": {
+      "resolution": "1080",
+      "fps": 60,
+      "performance": "battery",
+      "enhancement": "fast",
+      "superResolutionFrames": 4
+    },
+    "balanced": {
+      "resolution": "1080",
+      "fps": 30,
+      "performance": "balanced",
+      "enhancement": "balanced",
+      "superResolutionFrames": 8
+    },
+    "quality": {
+      "resolution": "1440",
+      "fps": 30,
+      "performance": "quality",
+      "enhancement": "high",
+      "superResolutionFrames": 12
+    },
+    "maximum": {
+      "resolution": "2160",
+      "fps": 30,
+      "performance": "max",
+      "enhancement": "ultra",
+      "superResolutionFrames": 16
+    }
+  }
+}

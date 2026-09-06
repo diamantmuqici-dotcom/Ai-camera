@@ -20,6 +20,8 @@ A browser-based computational camera for Android Chrome and desktop browsers.
 - Document scanner
 - Local IndexedDB gallery
 - Local browser processing; captures are not uploaded by the app
+- Installable PWA shell with offline caching
+- Optional detector worker bridge for future local ML models
 
 ## GitHub Pages
 
@@ -30,6 +32,12 @@ index.html
 pixel-ai-camera.html
 cam-test.html
 README.md
+manifest.webmanifest
+service-worker.js
+camera-utils.js
+detector-worker.js
+settings.json
+models/README.md
 ```
 
 Enable **Settings > Pages > Deploy from branch > main > /root**.
