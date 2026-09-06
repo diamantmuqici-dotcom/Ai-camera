@@ -794,6 +794,7 @@ const Cam={
       console.warn("[cam preferences]",e);
     }
     try{await Caps.inspect();}catch(e){console.warn("[cam capabilities]",e);}
+    AutoPilot.focusApplied=false;AutoPilot.wbApplied=false;AutoPilot.lastExposure=null;
     if(Array.isArray(APP.caps.focusMode)&&APP.caps.focusMode.includes("continuous-auto"))
       Caps.apply({focusMode:"continuous-auto"});
     APP.lensGuess=this.guessLens(APP.track.label);
@@ -1790,6 +1791,7 @@ const Modes={
       tools.appendChild(b);return b;};
     switch(m){
       case"photo":
+        add("AUTO CAMERA",AutoPilot.enabled,()=>{AutoPilot.toggle();this.apply(m);},"primary");
         add("HDR",S.enh.hdr,()=>{S.enh.hdr=!S.enh.hdr;Settings.save();this.apply(m);});
         add("SUPER RES",S.enh.sr,()=>{S.enh.sr=!S.enh.sr;Settings.save();this.apply(m);});
         add("BURST ×"+S.cap.burst,false,()=>{S.cap.burst={3:5,5:10,10:20,20:3}[S.cap.burst]||5;
@@ -1800,6 +1802,7 @@ const Modes={
       case"video":break;
       case"long":
         S.enh.sr=true;S.stab="high";S.enh.sharpen=true;S.enh.localContrast=true;
+        add("AUTO CAMERA",AutoPilot.enabled,()=>{AutoPilot.toggle();this.apply(m);},"primary");
         add("SUPER RES ON",true,()=>{}).classList.add("on");
         add("MOON MODE",S._moon,()=>{S._moon=!S._moon;
           if(S._moon&&Caps.has("exposureCompensation"))Caps.apply({exposureCompensation:-1.8});
@@ -1828,6 +1831,7 @@ const Modes={
         break;
       case"action":
         S.stab="low";S.enh.denoise=false;Settings.save();
+        add("AUTO CAMERA",AutoPilot.enabled,()=>{AutoPilot.toggle();this.apply(m);},"primary");
         add("BURST ×10",false,()=>{S.cap.burst=10;Capture.burst();},"primary");
         add("PERSON FOLLOW",Track.on&&Track.kind==="person",()=>Track.on?Track.stop():Track.arm("person"));
         add("CAR FOLLOW",Track.on&&Track.kind==="car",()=>Track.on?Track.stop():Track.arm("car"));
@@ -1854,6 +1858,31 @@ const Scene={
     else if(Motion.shake>0.6&&Zoom.digital()>4&&S.stab==="off")
       sug("High shake → enable STAB",()=>{S.stab="med";Settings.save();UI.sync();});
     else if(Zoom.target>=20&&S.mode!=="long")sug("Extreme zoom → LONG ZOOM mode",()=>Modes.apply("long"));
+  }
+};
+const AutoPilot={
+  enabled:true,last:0,lastExposure:null,lastZoomMode:"",focusApplied:false,wbApplied:false,
+  toggle(){this.enabled=!this.enabled;toast(this.enabled?"AUTO CAMERA on":"AUTO CAMERA off",this.enabled?"ok":"",1600);},
+  tick(){
+    if(!this.enabled||now()-this.last<700||APP.state!=="ready")return;
+    this.last=now();
+    const z=Zoom.digital(),mode=z>=8?"high":z>=3?"med":"off";
+    if(mode!==this.lastZoomMode){
+      this.lastZoomMode=mode;S.stab=mode;UI.chips();
+      S.enh.localContrast=z>=2;S.enh.sharpen=true;S.enh.sr=z>=6;
+    }
+    if(!this.focusApplied&&Array.isArray(APP.caps.focusMode)&&APP.caps.focusMode.includes("continuous-auto")){
+      this.focusApplied=true;Caps.apply({focusMode:"continuous-auto"});
+    }
+    if(!this.wbApplied&&Array.isArray(APP.caps.whiteBalanceMode)&&APP.caps.whiteBalanceMode.includes("continuous")){
+      this.wbApplied=true;Caps.apply({whiteBalanceMode:"continuous"});
+    }
+    if(Caps.has("exposureCompensation")&&Ana.mean!==undefined){
+      const ev=clamp((118-Ana.mean)/55,-1.5,1.5);
+      if(this.lastExposure===null||Math.abs(ev-this.lastExposure)>.18){
+        this.lastExposure=ev;Caps.apply({exposureCompensation:ev});
+      }
+    }
   }
 };
 
@@ -2127,6 +2156,7 @@ const Loop={
     Zoom.apply();
     if(!Rend.fastPreview)Rend.draw();
     Ana.tick(dt);
+    AutoPilot.tick();
     SmartAssist.tick();
     Track.tick();
     Overlays.drawAnalog();Overlays.drawLevel();Overlays.drawMag();Overlays.drawNav();
