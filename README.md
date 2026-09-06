@@ -40,6 +40,12 @@ camera-utils.js
 detector-worker.js
 settings.json
 models/README.md
+styles.css
+camera-core.js
+processing-worker.js
+readers.js
+tracking.js
+app.js
 ```
 
 Enable **Settings > Pages > Deploy from branch > main > /root**.

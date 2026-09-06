@@ -6,7 +6,13 @@ const FILES = [
   "./cam-test.html",
   "./manifest.webmanifest",
   "./camera-utils.js",
-  "./detector-worker.js"
+  "./detector-worker.js",
+  "./styles.css",
+  "./camera-core.js",
+  "./processing-worker.js",
+  "./readers.js",
+  "./tracking.js",
+  "./app.js"
 ];
 
 self.addEventListener("install", event => {

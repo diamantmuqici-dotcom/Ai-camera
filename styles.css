@@ -1,0 +1,9 @@
+/* Shared overrides for the modular camera build. The inline UI remains the compatibility fallback. */
+:root{--fast-preview-dpr:1.15}
+button,input,select{touch-action:manipulation}
+#app,#permScreen{contain:layout paint style}
+#stage{contain:strict}
+@media (max-width:600px){
+  #view{will-change:transform;image-rendering:auto}
+  #camVideo{will-change:transform;backface-visibility:hidden}
+}
