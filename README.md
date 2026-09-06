@@ -1,31 +1,86 @@
 # Pixel AI Camera
 
-A browser-based computational camera with zoom, enhancement, tracking, OCR, and local gallery support.
+A browser-based computational camera for Android Chrome and desktop browsers.
 
 ## Features
 
-- Camera preview using the browser camera API
+- Local camera preview and photo/video capture
 - Rear/front camera switching
 - Hardware zoom when exposed by the browser
 - Digital zoom above the hardware limit
-- `0.5x` ultrawide lens support when exposed by the browser
-- Live contrast, brightness, saturation, and sharpening
-- Photo and video capture
+- Real 0.5x ultrawide support when the browser exposes an ultrawide camera
+- Live brightness, contrast, saturation, and sharpening
 - HDR and multi-frame Super Resolution
 - Long Zoom mode
-- Person follow mode
-- Car follow mode
-- Center-weighted tap-to-focus
+- Person Follow and Car Follow visual tracking
+- Tap-to-focus and continuous autofocus when supported
 - License plate enhancement and OCR
+- Smart Plate mode: steady high-zoom automatic plate capture and OCR
 - Sign reader and OCR
 - Document scanner
-- Local browser gallery using IndexedDB
-- No uploads from the camera processing pipeline
+- Local IndexedDB gallery
+- Local browser processing; captures are not uploaded by the app
 
-## Run Locally
+## GitHub Pages
+
+Upload these files to a public GitHub repository:
+
+```text
+index.html
+pixel-ai-camera.html
+cam-test.html
+README.md
+```
+
+Enable **Settings > Pages > Deploy from branch > main > /root**.
+
+Open the generated HTTPS address:
+
+```text
+https://YOUR_USERNAME.github.io/YOUR_REPOSITORY/
+```
+
+HTTPS is required for camera access without ADB.
+
+## Local Android Testing With ADB
 
 From PowerShell:
 
 ```powershell
 cd "C:\Users\diama\Downloads\Better Camera More Features"
-python -m http.server 8080
+.\start-camera.ps1
+```
+
+Then open this address on the Pixel:
+
+```text
+http://127.0.0.1:8080/pixel-ai-camera.html
+```
+
+The launcher finds Platform-Tools, checks the authorized device, and creates the ADB reverse tunnel.
+
+## Performance
+
+For smoother Pixel preview:
+
+- Use 1080p instead of 1440p or 4K.
+- Select 60 FPS when the camera exposes it.
+- Use Balanced performance mode.
+- Use High enhancement for final captures rather than Max Quality during live preview.
+- Plate and sign readers use capped working images to avoid mobile memory spikes.
+
+The live Pixel preview uses the native video path for smoothness. Expensive enhancement is reserved for captures and reader workflows.
+
+## Limitations
+
+- A browser cannot create a real 0.5x view if Android Chrome does not expose the ultrawide camera.
+- Digital zoom cannot recover detail that the sensor did not capture.
+- Person and Car Follow are visual template tracking, not identity recognition or object detection.
+- Smart Plate captures only when enabled, the view is at least 4x, and the frame is steady.
+- The browser can read plate text but cannot reliably identify a vehicle make or model without a trained detection model.
+- OCR downloads its language model once and may require network access.
+- Camera controls depend on capabilities exposed by the browser and device.
+
+## Privacy
+
+Camera processing happens locally in the browser. The app does not include analytics, facial recognition, identity databases, or background tracking.

@@ -1239,7 +1239,9 @@ const PROC_FN=function buildProc(){
     if(E2.sharpen!==false&&(o.shAmt||0)>0){rep("Sharpening…");
       unsharp(d,w,h,Math.min(.85,(o.shAmt/100)*0.7*q));}else rep("Sharpening (skip)");
     // 7 chromatic aberration
-    if(E2.ca){rep("Chromatic aberration…");caFix(d,w,h,1);}else rep("CA (skip)");
+    const caEnabled=E2.ca&&w*h<=3000000;
+    if(caEnabled){rep("Chromatic aberration…");caFix(d,w,h,1);}
+    else rep(E2.ca?"Chromatic aberration (fast skip)":"CA (skip)");
     // 8 grain
     if(E2.grain){rep("Grain…");for(let i=0;i<d.length;i+=16){
       const n=(Math.random()-0.5)*7;d[i]=clampU(d[i]+n);d[i+1]=clampU(d[i+1]+n);d[i+2]=clampU(d[i+2]+n);}}
@@ -1774,6 +1776,7 @@ const OcrUI={
       box.textContent=lines;E("pickStrip").appendChild(box);E("procFill").style.width="100%";
       E("btnProcOk").classList.remove("hide");E("btnProcOk").textContent="CLOSE";E("btnProcOk").onclick=()=>Progress.close();
       E("procModal").classList.remove("hide");
+      return lines;
     }catch(e){Progress.close();toast(title+" failed: "+e.message,"err",4000);}
   }
 };
@@ -1804,6 +1807,7 @@ const Modes={
           this.apply(m);toast(S._moon?"MOON MODE: exposure protected, highlights guarded":
             "MOON MODE off","ok");},"warn");
         add("ZOOM NAV",S.ui.nav,()=>{S.ui.nav=!S.ui.nav;Settings.save();UI.sync();this.apply(m);});
+        add("SMART PLATE",SmartAssist.enabled,()=>{SmartAssist.toggle();this.apply(m);},"primary");
         Settings.save();break;
       case"night":
         S.enh.denoise=true;S.enh.sr=true;S.pro.sharp=22;S.pro.denoise=60;
@@ -1827,6 +1831,7 @@ const Modes={
         add("BURST ×10",false,()=>{S.cap.burst=10;Capture.burst();},"primary");
         add("PERSON FOLLOW",Track.on&&Track.kind==="person",()=>Track.on?Track.stop():Track.arm("person"));
         add("CAR FOLLOW",Track.on&&Track.kind==="car",()=>Track.on?Track.stop():Track.arm("car"));
+        add("SMART PLATE",SmartAssist.enabled,()=>{SmartAssist.toggle();this.apply(m);},"primary");
         break;
       case"pro":UI.open("proPanel");break;
     }
@@ -1899,7 +1904,7 @@ const Plate={
     const id=ug.getImageData(0,0,u.width,u.height);
     const res=await Proc.runPipeline(id,{pro:{...S.pro,sat:0,gain:110,contrast:125},
       enh:{denoise:true,sharpen:true,localContrast:true,contrast:true,color:false,recover:true,
-        dehaze:false,ca:true,grain:false},quality:"high",shAmt:65,dnAmt:45,mode:"plate"},
+        dehaze:false,ca:false,grain:false},quality:"high",shAmt:65,dnAmt:45,mode:"plate"},
       (p,l)=>Progress.set(p,l));
     u.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(res.buf),res.w,res.h),0,0);
     Progress.close();
@@ -1910,7 +1915,10 @@ const Plate={
 };
 const Reader={
   async plate(){
-    try{const blob=await Plate.run();if(blob)await OcrUI.fromBlob(blob,"LICENSE PLATE READER");}
+    try{const blob=await Plate.run();if(blob){
+      const text=await OcrUI.fromBlob(blob,"LICENSE PLATE READER");
+      if(text)toast("Plate detected: "+text.replace(/\s+/g," ").slice(0,48),"ok",3200);
+    }}
     catch(e){Progress.close();toast("Plate reader failed: "+e.message,"err",4000);}
   },
   async sign(){
@@ -1922,6 +1930,19 @@ const Reader={
       const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.92));
       await OcrUI.fromBlob(blob,"SIGN READER");
     }catch(e){Progress.close();toast("Sign reader failed: "+e.message,"err",4000);}
+  }
+};
+const SmartAssist={
+  enabled:false,steadySince:0,lastCapture:0,busy:false,
+  toggle(){this.enabled=!this.enabled;this.steadySince=0;
+    toast(this.enabled?"SMART PLATE: zoom to a centered plate and hold steady":"SMART PLATE off",this.enabled?"ok":"",2200);},
+  tick(){
+    if(!this.enabled||this.busy||APP.state!=="ready"||Zoom.digital()<4){this.steadySince=0;return;}
+    if(Motion.shake>.35){this.steadySince=0;return;}
+    if(!this.steadySince)this.steadySince=now();
+    if(now()-this.steadySince<1400||now()-this.lastCapture<10000)return;
+    this.busy=true;this.lastCapture=now();this.steadySince=0;
+    Reader.plate().finally(()=>{this.busy=false;});
   }
 };
 
@@ -2106,6 +2127,7 @@ const Loop={
     Zoom.apply();
     if(!Rend.fastPreview)Rend.draw();
     Ana.tick(dt);
+    SmartAssist.tick();
     Track.tick();
     Overlays.drawAnalog();Overlays.drawLevel();Overlays.drawMag();Overlays.drawNav();
     // adaptive perf: if fps sags, drop preview DPR once
