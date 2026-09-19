@@ -1,0 +1,1 @@
+"use strict";window.PlateDetector={scoreCandidate(text,confidence=0){const base=ReaderTools.plateScore(text);return Math.min(1,base*.7+Math.max(0,Math.min(1,confidence))*.3)},select(candidates=[]){return candidates.slice().sort((a,b)=>this.scoreCandidate(b.text,b.confidence)-this.scoreCandidate(a.text,a.confidence))[0]||null}};
