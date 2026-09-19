@@ -7,6 +7,9 @@ A local-first computational camera for Android Chrome and desktop browsers.
 - Uses the browser camera API with capability-aware constraints and safe fallbacks.
 - Prefers 1080p/60 FPS for a responsive preview when the device exposes it.
 - Uses browser-exposed hardware zoom when available and digital crop zoom above it.
+- Automatically adapts camera resolution/FPS as zoom, motion, battery state and device capabilities change.
+- Includes an HD capture path that preserves the highest practical source resolution without inventing detail.
+- Automatically routes 0.5× to a genuinely exposed ultrawide camera when the browser exposes one.
 - Does not claim a real 0.5x ultrawide lens unless Android/Chrome actually exposes a separate camera.
 - Keeps preview rendering lightweight and throttles expensive analysis/tracking independently.
 - Uses bounded background processing for capture enhancement and multi-frame workflows.
@@ -23,7 +26,7 @@ A local-first computational camera for Android Chrome and desktop browsers.
 
 A web app cannot manufacture camera hardware features that Chrome does not expose.
 
-- A real ultrawide/0.5x view requires an ultrawide camera to be exposed as a selectable video input.
+- A real ultrawide/0.5x view requires an ultrawide camera to be exposed as a selectable video input. No web application can force a browser to expose hidden camera hardware.
 - Digital zoom is cropping/resampling. It cannot recreate detail that was never captured.
 - Browser camera capabilities differ between Pixel models, Chrome versions and Android releases.
 - True ISO/shutter controls are not generally exposed through this app's browser API.
@@ -70,6 +73,8 @@ This repository intentionally keeps the existing file layout:
     readers.js
     tracking.js
     app.js
+    adaptive-engine.js
+    camera-lens-router.js
 
 No additional model directory or generated dependency file is required by this build.
 
