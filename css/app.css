@@ -1,0 +1,1 @@
+:root{--pc-bg:#050609;--pc-surface:rgba(18,20,27,.78);--pc-line:rgba(255,255,255,.09);--pc-text:#f7f8fb;--pc-muted:#9ca3b2;--pc-accent:#8ab4f8}body{background:var(--pc-bg);color:var(--pc-text)}.pc-safe{padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
