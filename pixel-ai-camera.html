@@ -885,6 +885,7 @@ const Caps={
     let s={};try{s=t.getSettings();}catch(e){}
     APP.caps=c;APP.settings=s;
     if(c.zoom&&c.zoom.max>1&&S.zoom.target>c.zoom.max)Zoom.setTarget(1,true);
+    if(!APP.lensGuess||APP.lensGuess!=="ULTRAWIDE")Zoom.wideActive=false;
     if(!c.zoom||c.zoom.max<=1&&!S._hwWarned){S._hwWarned=true;
       toast("Hardware zoom unavailable in this browser — digital crop zoom will be used","",3200);}
     this.buildProHardware();
@@ -921,9 +922,11 @@ const Caps={
 /* ══════════ 09 · ZOOM CONTROLLER ══════════ */
 const Zoom={
   PRESETS:[0.5,1,2,3,5,10,15,20,30,50,100],MAX:100,
-  target:1,current:1,hwCurrent:1,lastHwApply:0,
+  target:1,current:1,hwCurrent:1,lastHwApply:0,wideActive:false,
   offX:0,offY:0,             // digital crop offsets (−0.5..0.5 of frame)
   hwMax(){const z=APP.caps.zoom;return z&&z.max>1?z.max:1;},
+  hwMin(){const z=APP.caps.zoom;return z&&Number.isFinite(z.min)?z.min:1;},
+  minTarget(){return this.wideActive?0.5:1;},
   setTarget(t,silent){this.target=clamp(t,this.minTarget(),this.MAX);
     if(!silent)UI.updateZoomUI(); Scene.check();},
   nudge(f){this.setTarget(this.target*f);},
@@ -932,12 +935,12 @@ const Zoom={
     // smooth toward target
     this.current=lerp(this.current,this.target,0.28);
     if(Math.abs(this.current-this.target)<0.002)this.current=this.target;
-    const H=this.hwMax(),L=this.hwMin(),hw=clamp(this.current,L,H);
+    const H=this.hwMax(),L=this.hwMin(),hw=this.current<1?1:clamp(this.current,L,H);
     if(hw!==this.hwCurrent&&(force||now()-this.lastHwApply>90)){
       this.hwCurrent=hw;this.lastHwApply=now();
       Caps.apply({zoom:Math.round(hw*100)/100});}
     const zoomBoost=clamp(Math.log2(Math.max(1,this.digital()))*.045,0,.16);
-    Cam.video.style.transform=`scale(${this.digital()})`;
+    Cam.video.style.transform=`scale(${this.current<1?1:this.digital()})`;
     Cam.video.style.filter=`brightness(${S.pro.gain/100}) contrast(${S.pro.contrast/100+zoomBoost}) saturate(${S.pro.sat/100})`;
     UI.updateZoomUI();
   },
