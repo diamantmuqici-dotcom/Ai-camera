@@ -1,13 +1,43 @@
 {
-  "name":"Pixel AI Camera",
-  "short_name":"Pixel Camera",
-  "description":"Local computational camera with hardware-aware zoom, capture enhancement, OCR and tracking.",
-  "start_url":"./pixel-ai-camera.html",
-  "scope":"./",
-  "display":"fullscreen",
-  "orientation":"any",
-  "background_color":"#050507",
-  "theme_color":"#050507",
-  "categories":["photo","utilities"],
-  "icons":[]
+  "name": "Pixel AI Camera",
+  "short_name": "Pixel Camera",
+  "description": "Local computational camera with hardware-aware zoom, capture enhancement, OCR and tracking.",
+  "start_url": "./pixel-ai-camera.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050507",
+  "theme_color": "#050507",
+  "categories": [
+    "photo",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "./icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Camera",
+      "url": "./pixel-ai-camera.html"
+    },
+    {
+      "name": "Camera Lab",
+      "url": "./cam-test.html"
+    },
+    {
+      "name": "Test Harness",
+      "url": "./test-harness.html"
+    }
+  ]
 }
