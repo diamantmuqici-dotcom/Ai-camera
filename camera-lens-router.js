@@ -39,6 +39,7 @@ window.LensRouter = {
     }
     await Cam.switchCamera(wide.deviceId);
     APP.lensGuess="ULTRAWIDE";
+    if(window.Zoom)Zoom.wideActive=true;
     const chip=document.getElementById("chipLens");
     if(chip)chip.textContent="LENS ULTRAWIDE";
     return {ok:true,device:wide};
