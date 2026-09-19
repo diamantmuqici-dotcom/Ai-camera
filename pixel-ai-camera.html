@@ -583,6 +583,8 @@ body.minimal #hudStrip,body.minimal #meterBox,body.minimal #histWrap{opacity:0;p
 <script src="./camera-core.js"></script>
 <script src="./readers.js"></script>
 <script src="./tracking.js"></script>
+<script src="./adaptive-engine.js"></script>
+<script src="./camera-lens-router.js"></script>
 <script src="./app.js"></script>
 <script>
 "use strict";
@@ -728,7 +730,7 @@ const UI={
       b.onclick=()=>{
         if(wide){
           const current=APP.track?.getSettings().deviceId;
-          const wideCam=APP.devices.find(d=>d.deviceId!==current&&/ultra|wide|0\.5/i.test(d.label||""));
+          const wideCam=(window.LensRouter?.findUltrawide(current))||APP.devices.find(d=>d.deviceId!==current&&/ultra|wide|0\.5/i.test(d.label||""));
           if(wideCam)Cam.switchCamera(wideCam.deviceId);
           else toast("0.5× wide camera is not exposed by this browser","err");
           return;
@@ -816,6 +818,7 @@ const Cam={
     await this.video.play().catch(()=>{});
 
     try{await Caps.inspect();}catch(e){console.warn("[cam capabilities]",e);}
+    try{AdaptiveEngine.cameraReady();}catch(e){console.debug("[adaptive]",e);}
     AutoPilot.focusApplied=false;AutoPilot.wbApplied=false;AutoPilot.lastExposure=null;
 
     if(Array.isArray(APP.caps.focusMode)&&APP.caps.focusMode.includes("continuous-auto"))
@@ -823,7 +826,9 @@ const Cam={
 
     APP.lensGuess=this.guessLens(APP.track.label);
     E("chipLens").textContent="LENS "+APP.lensGuess;
-    await this.list();Settings.save();
+    await this.list();
+    try{await LensRouter?.refresh();}catch(e){}
+    Settings.save();
     UI.setState("ready");
 
     try{Rend.resize();Zoom.apply(true);}catch(e){console.warn("[cam preview]",e);}
@@ -1579,6 +1584,29 @@ const Progress={
 };
 
 /* ══════════ 14 · CAPTURE MANAGER ══════════ */
+const HD={ 
+  prepareCanvas(canvas,reason="capture"){
+    if(!canvas)return canvas;
+    const max=8192;
+    if(canvas.width>max||canvas.height>max){
+      const scale=Math.min(max/canvas.width,max/canvas.height);
+      const out=document.createElement("canvas");
+      out.width=Math.max(1,Math.round(canvas.width*scale));
+      out.height=Math.max(1,Math.round(canvas.height*scale));
+      const g=out.getContext("2d");
+      g.imageSmoothingEnabled=true;g.imageSmoothingQuality="high";
+      g.drawImage(canvas,0,0,out.width,out.height);
+      return out;
+    }
+    return canvas;
+  },
+  settings(){
+    const st=APP.track?.getSettings?.()||{};
+    return {width:st.width||0,height:st.height||0,fps:st.frameRate||0,zoom:Zoom.target||1,
+      hardwareZoom:Zoom.hwMax()>1};
+  }
+};
+
 const Capture={
   timers:{off:0,"3":3,"5":5,"10":10},cancelling:false,
   grabFullRes(){ // honest crop at sensor pixels for current aspect+zoom
