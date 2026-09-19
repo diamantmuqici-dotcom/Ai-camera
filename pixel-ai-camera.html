@@ -1029,10 +1029,23 @@ const Stab={
 /* ══════════ 11 · SUBJECT TRACKER (template SAD, no identity) ══════════ */
 const Track={
   on:false,kind:"subject",tpl:null,tx:0,ty:0,tw:28,th:21,conf:0,lost:0,
-  autoCX:0,autoCY:0,
-  arm(kind="subject"){this.kind=kind;this.on=false;this.tpl=null;
-    toast(`Tap a ${kind} to follow`);},
-  select(nx,ny){ // nx,ny normalized on video
+  autoCX:0,autoCY:0,work:null,wctx:null,
+
+  arm(kind="subject"){
+    this.kind=kind;this.on=false;this.tpl=null;
+    toast(`Tap a ${kind} to follow`);
+  },
+
+  ensureWork(){
+    if(!this.work){
+      this.work=document.createElement("canvas");
+      this.work.width=128;this.work.height=96;
+      this.wctx=this.work.getContext("2d",{willReadFrequently:true});
+    }
+    return this.wctx;
+  },
+
+  select(nx,ny){
     const v=Cam.video;if(!v.videoWidth)return;
     const r=Zoom.cropRect(null);
     const px=r.sx+nx*r.sw,py=r.sy+ny*r.sh;
@@ -1044,45 +1057,68 @@ const Track={
     E("chipTrack").classList.remove("hide");E("trackBox").style.opacity=1;
     haptic(12);toast("Tracking target — visual frame tracking only (no identity)","",2400);
   },
-  stop(){this.on=false;this.tpl=null;E("trackBox").style.opacity=0;
-    E("chipTrack").classList.add("hide");},
-  tick(){ if(!this.on||!this.tpl||!Cam.video.videoWidth)return;
-    const v=Cam.video,r=Zoom.cropRect(null);
-    const c=document.createElement("canvas");c.width=128;c.height=96;
-    const g=c.getContext("2d",{willReadFrequently:true});
+
+  stop(){
+    this.on=false;this.tpl=null;this.lost=0;
+    E("trackBox").style.opacity=0;E("chipTrack").classList.add("hide");
+  },
+
+  tick(){
+    if(!this.on||!this.tpl||!Cam.video.videoWidth)return;
+    const v=Cam.video,r=Zoom.cropRect(null),g=this.ensureWork();
     g.drawImage(v,r.sx,r.sy,r.sw,r.sh,0,0,128,96);
     const img=g.getImageData(0,0,128,96).data;
     const sx=this.tx/v.videoWidth*128,sy=this.ty/v.videoHeight*96;
     let best=1e12,bx=sx,by=sy;
-    const R=16;
+    const R=14;
     for(let dy=-R;dy<=R;dy+=2)for(let dx=-R;dx<=R;dx+=2){
       const x=clamp(sx+dx,14,114),y=clamp(sy+dy,10,86);
-      const s=this.sad(img,x,y);if(s<best){best=s;bx=x;by=y;}}
+      const score=this.sad(img,x,y);
+      if(score<best){best=score;bx=x;by=y;}
+    }
     for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
       const x=clamp(bx+dx,14,114),y=clamp(by+dy,10,86);
-      const s=this.sad(img,x,y);if(s<best){best=s;bx=x;by=y;}}
-    const maxSad=28*21*255;this.conf=clamp(1-best/(maxSad*0.28),0,1);
-    if(this.conf<0.3){this.lost++;if(this.lost>12){toast("Target lost — reselect","err");this.stop();return;}}
-    else this.lost=0;
+      const score=this.sad(img,x,y);
+      if(score<best){best=score;bx=x;by=y;}
+    }
+    const maxSad=28*21*255;
+    this.conf=clamp(1-best/(maxSad*.28),0,1);
+    if(this.conf<.3){
+      this.lost++;
+      if(this.lost>10){toast("Target lost — reselect","err");this.stop();return;}
+    }else this.lost=0;
+
     this.tx=bx/128*v.videoWidth;this.ty=by/96*v.videoHeight;
-    // auto-center: steer digital crop toward target
+
     if(S.trk.autoCenter){
-      const resp=S.trk.resp/100*0.5+0.05,sm=1-(S.trk.smooth/100)*0.85;
-      const wantX=(this.tx/v.videoWidth-0.5),wantY=(this.ty/v.videoHeight-0.5);
-      this.autoCX=lerp(this.autoCX,wantX,resp);this.autoCY=lerp(this.autoCY,wantY,resp);
-      Zoom.offX=lerp(Zoom.offX,this.autoCX,sm);Zoom.offY=lerp(Zoom.offY,this.autoCY,sm);
+      const resp=S.trk.resp/100*.5+.05,sm=1-(S.trk.smooth/100)*.85;
+      const wantX=this.tx/v.videoWidth-.5,wantY=this.ty/v.videoHeight-.5;
+      this.autoCX=lerp(this.autoCX,wantX,resp);
+      this.autoCY=lerp(this.autoCY,wantY,resp);
+      Zoom.offX=lerp(Zoom.offX,this.autoCX,sm);
+      Zoom.offY=lerp(Zoom.offY,this.autoCY,sm);
     }
     this.drawBox();
   },
-  sad(img,cx,cy){let s=0;const W=128;
+
+  sad(img,cx,cy){
+    let sum=0;const W=128;
     for(let y=0;y<21;y+=2)for(let x=0;x<28;x+=2){
       const px=Math.round(cx-14+x),py=Math.round(cy-10.5+y);
       const i=(py*W+px)*4,j=(y*28+x)*4;
-      s+=Math.abs(img[i]-this.tpl[j])+Math.abs(img[i+1]-this.tpl[j+1])+Math.abs(img[i+2]-this.tpl[j+2]);}
-    return s;},
-  drawBox(){const v=Cam.video,r=Zoom.cropRect(null),st=E("stage");
-    const X=(this.tx-r.sx)/r.sw*st.clientWidth,Y=(this.ty-r.sy)/r.sh*st.clientHeight;
-    const b=E("trackBox");b.style.left=(X-46)+"px";b.style.top=(Y-34)+"px";
+      sum+=Math.abs(img[i]-this.tpl[j])
+        +Math.abs(img[i+1]-this.tpl[j+1])
+        +Math.abs(img[i+2]-this.tpl[j+2]);
+    }
+    return sum;
+  },
+
+  drawBox(){
+    const v=Cam.video,r=Zoom.cropRect(null),st=E("stage");
+    const X=(this.tx-r.sx)/r.sw*st.clientWidth;
+    const Y=(this.ty-r.sy)/r.sh*st.clientHeight;
+    const b=E("trackBox");
+    b.style.left=(X-46)+"px";b.style.top=(Y-34)+"px";
     b.style.width="92px";b.style.height="68px";
     E("trackHud").textContent=`TRACK ${(this.conf*100)|0}%`;
     E("focusConfWrap").classList.remove("hide");
