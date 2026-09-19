@@ -1,0 +1,1 @@
+"use strict";let busy=false;self.onmessage=e=>{const m=e.data||{};if(m.type!=="track"||busy)return;busy=true;try{self.postMessage({type:"tracked",id:m.id,box:m.box||null,confidence:Number(m.confidence)||0})}finally{busy=false}};
