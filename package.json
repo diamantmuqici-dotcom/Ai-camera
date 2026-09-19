@@ -1,0 +1,1 @@
+{"name":"pixel-ai-camera","version":"1.0.0","private":true,"description":"Local-first computational camera PWA and optional Android wrapper","scripts":{"cap:add":"cap add android","cap:sync":"cap sync","cap:open":"cap open android","cap:doctor":"cap doctor"},"dependencies":{"@capacitor/android":"latest","@capacitor/core":"latest"},"devDependencies":{"@capacitor/cli":"latest"}}
