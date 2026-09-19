@@ -1,4 +1,4 @@
-const CACHE="pixel-ai-camera-v4";
+const CACHE="pixel-ai-camera-v5";
 const FILES=[
   "./",
   "./index.html",
