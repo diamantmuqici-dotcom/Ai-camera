@@ -1,9 +1,35 @@
-/* Shared overrides for the modular camera build. The inline UI remains the compatibility fallback. */
-:root{--fast-preview-dpr:1.15}
+/* Performance-focused shared styles. Existing inline camera UI remains the primary visual layer. */
+:root{
+  --fast-preview-dpr:1;
+  --ui-blur:12px;
+  --ui-border:rgba(255,255,255,.09);
+}
+html,body{
+  -webkit-text-size-adjust:100%;
+  text-rendering:optimizeSpeed;
+}
 button,input,select{touch-action:manipulation}
+button{contain:layout paint}
 #app,#permScreen{contain:layout paint style}
-#stage{contain:strict}
+#stage{contain:strict;isolation:isolate}
+#camVideo,#view,#fxLayer,#gridLayer,#anaLayer{
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+#camVideo{will-change:transform;transform:translateZ(0)}
+#view{will-change:opacity;transform:translateZ(0)}
+.sheet .pane,.sidePanel{contain:layout paint}
+#galGrid{contain:content}
 @media (max-width:600px){
-  #view{will-change:transform;image-rendering:auto}
-  #camVideo{will-change:transform;backface-visibility:hidden}
+  #view{image-rendering:auto}
+  .sheet .body,.sidePanel .body{
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    transition-duration:.001ms!important;
+  }
 }
