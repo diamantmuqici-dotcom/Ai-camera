@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Camera Probe</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pixel AI Camera — Camera Probe</title>
 <style>
-  body{background:#000;color:#fff;font-family:monospace;padding:16px}
-  #log{white-space:pre-wrap;font-size:13px;line-height:1.7;margin:12px 0}
-  button{font-size:18px;padding:14px 24px;border-radius:12px;border:none;
-    background:#5ab0ff;color:#00203a;font-weight:700}
-  video{width:100%;max-height:55vh;background:#111;margin-top:10px;border-radius:10px}
-  .ok{color:#5ee08c}.err{color:#ff6b6b}.warn{color:#ffcf5c}
+body{background:#000;color:#fff;font-family:ui-monospace,monospace;padding:16px;line-height:1.5}
+button{font-size:16px;padding:12px 18px;border-radius:12px;border:0;background:#5ab0ff;color:#00203a;font-weight:800}
+video{width:100%;max-height:55vh;background:#111;margin-top:12px;border-radius:12px}
+#log{white-space:pre-wrap;font-size:12px;margin:12px 0}
+.ok{color:#5ee08c}.err{color:#ff6b6b}.warn{color:#ffcf5c}
+.card{border:1px solid #222;border-radius:12px;padding:12px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -19,28 +19,81 @@
 <div id="log"></div>
 <video id="v" autoplay playsinline muted></video>
 <script>
-const L=(m,c)=>{const d=document.createElement("div");d.textContent=m;
-  if(c)d.className=c;document.getElementById("log").appendChild(d);};
+const log=document.getElementById("log");
+const L=(m,c)=>{const d=document.createElement("div");d.textContent=m;if(c)d.className=c;log.appendChild(d);};
+const v=document.getElementById("v");
+
+L("secure context: "+window.isSecureContext,window.isSecureContext?"ok":"warn");
+L("origin: "+location.origin);
+L("mediaDevices: "+!!navigator.mediaDevices,navigator.mediaDevices?"ok":"err");
+L("getUserMedia: "+!!navigator.mediaDevices?.getUserMedia,navigator.mediaDevices?.getUserMedia?"ok":"err");
+
 window.addEventListener("error",e=>L("SCRIPT ERROR: "+e.message,"err"));
-L("isSecureContext: "+window.isSecureContext, window.isSecureContext?"ok":"warn");
-L("protocol: "+location.protocol);
-L("mediaDevices: "+!!navigator.mediaDevices, navigator.mediaDevices?"ok":"err");
-L("getUserMedia: "+!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia));
+window.addEventListener("unhandledrejection",e=>L("PROMISE ERROR: "+String(e.reason),"err"));
+
 document.getElementById("btn").onclick=async()=>{
-  L("requesting camera...");
+  L("requesting rear camera…");
   try{
-    const s=await navigator.mediaDevices.getUserMedia({video:true});
-    const t=s.getVideoTracks()[0];
-    L("SUCCESS: "+(t.label||"camera"),"ok");
-    try{L("settings: "+JSON.stringify(t.getSettings()),"ok");}catch(e){}
-    document.getElementById("v").srcObject=s;
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ideal:"environment"},
+        width:{ideal:1920},
+        height:{ideal:1080},
+        frameRate:{ideal:60}
+      },
+      audio:false
+    });
+    const track=stream.getVideoTracks()[0];
+    v.srcObject=stream;
+    await v.play().catch(()=>{});
+
+    L("SUCCESS: "+(track.label||"camera"),"ok");
+
+    try{
+      const settings=track.getSettings();
+      L("settings:\n"+JSON.stringify(settings,null,2),"ok");
+    }catch{}
+
+    try{
+      const caps=track.getCapabilities?.()||{};
+      const useful={
+        zoom:caps.zoom||null,
+        focusMode:caps.focusMode||null,
+        focusDistance:caps.focusDistance||null,
+        exposureCompensation:caps.exposureCompensation||null,
+        torch:caps.torch||false,
+        width:caps.width||null,
+        height:caps.height||null,
+        frameRate:caps.frameRate||null
+      };
+      L("capabilities:\n"+JSON.stringify(useful,null,2),"ok");
+    }catch{}
+
+    if("ImageCapture" in window){
+      try{
+        const imageCapture=new ImageCapture(track);
+        const photoCaps=await imageCapture.getPhotoCapabilities();
+        L("photo capabilities:\n"+JSON.stringify({
+          imageWidth:photoCaps.imageWidth,
+          imageHeight:photoCaps.imageHeight,
+          zoom:photoCaps.zoom
+        },null,2),"ok");
+      }catch(e){L("ImageCapture unavailable: "+e.message,"warn");}
+    }
+
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    const cameras=devices.filter(d=>d.kind==="videoinput");
+    L("video inputs exposed by browser: "+cameras.length,"ok");
+    cameras.forEach((d,i)=>L((i+1)+". "+(d.label||"camera")));
   }catch(e){
     L("FAILED: "+e.name+" — "+e.message,"err");
-    const h={NotAllowedError:"Permission denied OR insecure origin. Tap the camera/lock icon in the address bar → Permissions → allow Camera.",
+    const h={
+      NotAllowedError:"Permission denied. Allow Camera for this site.",
       NotFoundError:"No camera detected.",
-      NotReadableError:"Camera is busy in another app — close it.",
-      SecurityError:"Blocked: needs HTTPS or localhost.",
-      OverconstrainedError:"Constraints unsupported."};
+      NotReadableError:"Camera is busy in another app.",
+      SecurityError:"Camera access needs HTTPS or localhost.",
+      OverconstrainedError:"Requested constraints are unsupported; retry with basic camera mode."
+    };
     if(h[e.name])L(h[e.name],"warn");
   }
 };
