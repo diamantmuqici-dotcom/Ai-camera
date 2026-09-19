@@ -1,107 +1,106 @@
 # Pixel AI Camera
 
-A browser-based computational camera for Android Chrome and desktop browsers.
+A local-first computational camera for Android Chrome and desktop browsers.
 
-## Features
+## What this build does
 
-- Local camera preview and photo/video capture
-- Rear/front camera switching
-- Hardware zoom when exposed by the browser
-- Digital zoom above the hardware limit
-- Real 0.5x ultrawide support when the browser exposes an ultrawide camera
-- Live brightness, contrast, saturation, and sharpening
-- HDR and multi-frame Super Resolution
-- Long Zoom mode
-- Person Follow and Car Follow visual tracking
-- Tap-to-focus and continuous autofocus when supported
-- License plate enhancement and OCR
-- Smart Plate mode: steady high-zoom automatic plate capture and OCR
-- Fast Shot mode: saves the original immediately and enhances in the background
-- Auto Pro: zoom-aware focus distance, exposure, gamma, contrast, color, sharpening, and denoise
-- Sign reader and OCR
-- Document scanner
-- Local IndexedDB gallery
-- Local browser processing; captures are not uploaded by the app
-- Installable PWA shell with offline caching
-- Optional detector worker bridge for future local ML models
+- Uses the browser camera API with capability-aware constraints and safe fallbacks.
+- Prefers 1080p/60 FPS for a responsive preview when the device exposes it.
+- Uses browser-exposed hardware zoom when available and digital crop zoom above it.
+- Does not claim a real 0.5x ultrawide lens unless Android/Chrome actually exposes a separate camera.
+- Keeps preview rendering lightweight and throttles expensive analysis/tracking independently.
+- Uses bounded background processing for capture enhancement and multi-frame workflows.
+- Supports HDR and multi-frame super-resolution workflows where the browser can provide the required frames.
+- Includes visual subject tracking with explicit 'no identity recognition' behavior.
+- Includes plate/text helper logic with temporal candidate stabilization; OCR itself depends on the OCR engine available to the app.
+- Fast Shot can save the original before enhancement completes.
+- Stores captures locally in IndexedDB.
+- Includes a PWA shell and versioned offline cache.
+- Includes camera diagnostics and a camera test page.
+- Does not upload captures or include analytics.
+
+## Important reality checks
+
+A web app cannot manufacture camera hardware features that Chrome does not expose.
+
+- A real ultrawide/0.5x view requires an ultrawide camera to be exposed as a selectable video input.
+- Digital zoom is cropping/resampling. It cannot recreate detail that was never captured.
+- Browser camera capabilities differ between Pixel models, Chrome versions and Android releases.
+- True ISO/shutter controls are not generally exposed through this app's browser API.
+- The included tracker is visual/template tracking, not face recognition, identity recognition, or a trained object detector.
+- No external ML model is bundled in this repository, so the detector worker intentionally reports that ML detection is unavailable instead of pretending otherwise.
+- OCR may require a network download for its engine/language data unless the browser already has the required resource cached.
+
+## Performance architecture
+
+The preview path is intentionally separated from heavier work:
+
+1. Native camera video presents the live stream.
+2. Hardware zoom is applied only when the camera exposes a zoom capability.
+3. Digital crop/processing is throttled rather than recalculated unnecessarily.
+4. Histogram/sharpness analysis runs at a lower rate than preview rendering.
+5. Visual tracking runs at a bounded rate and reuses its working canvas.
+6. Capture enhancement can run asynchronously so the original can be saved first.
+7. The app reacts to sustained low preview FPS by moving toward a lower-cost processing profile.
+
+For a Pixel, start with:
+
+- 1080p
+- 60 FPS if exposed
+- Balanced performance
+- Fast Shot enabled
+- Higher-quality enhancement for final captures rather than continuously processing the live preview
+
+## Files
+
+This repository intentionally keeps the existing file layout:
+
+    index.html
+    pixel-ai-camera.html
+    cam-test.html
+    README.md
+    manifest.webmanifest
+    service-worker.js
+    camera-utils.js
+    detector-worker.js
+    settings.json
+    styles.css
+    camera-core.js
+    processing-worker.js
+    readers.js
+    tracking.js
+    app.js
+
+No additional model directory or generated dependency file is required by this build.
 
 ## GitHub Pages
 
-Upload these files to a public GitHub repository:
+Enable:
 
-```text
-index.html
-pixel-ai-camera.html
-cam-test.html
-README.md
-manifest.webmanifest
-service-worker.js
-camera-utils.js
-detector-worker.js
-settings.json
-models/README.md
-styles.css
-camera-core.js
-processing-worker.js
-readers.js
-tracking.js
-app.js
-```
+**Settings → Pages → Deploy from branch → main → /root**
 
-Enable **Settings > Pages > Deploy from branch > main > /root**.
+Then open the HTTPS GitHub Pages address for the repository.
 
-Open the generated HTTPS address:
+HTTPS (or localhost) is required by browsers for camera access.
 
-```text
-https://YOUR_USERNAME.github.io/YOUR_REPOSITORY/
-```
+## Local Android testing
 
-HTTPS is required for camera access without ADB.
+The existing camera test page is:
 
-## Local Android Testing With ADB
+    cam-test.html
 
-From PowerShell:
-
-```powershell
-cd "C:\Users\diama\Downloads\Better Camera More Features"
-.\start-camera.ps1
-```
-
-Then open this address on the Pixel:
-
-```text
-http://127.0.0.1:8080/pixel-ai-camera.html
-```
-
-The launcher finds Platform-Tools, checks the authorized device, and creates the ADB reverse tunnel.
-
-## Performance
-
-For smoother Pixel preview:
-
-- Use 1080p instead of 1440p or 4K.
-- Select 60 FPS when the camera exposes it.
-- Use Balanced performance mode.
-- Use High enhancement for final captures rather than Max Quality during live preview.
-- Plate and sign readers use capped working images to avoid mobile memory spikes.
-
-The live Pixel preview uses the native video path for smoothness. Expensive enhancement is reserved for captures and reader workflows.
-
-The default balanced camera request is 1080p so the first launch favors stable frame rate. Higher resolutions remain available in Settings.
-
-Normal Photo mode uses Fast Shot by default: the original is saved immediately, then the enhanced version replaces it in the local gallery when processing finishes. HDR and Super Resolution remain slower because they capture multiple frames by design.
-
-## Limitations
-
-- A browser cannot create a real 0.5x view if Android Chrome does not expose the ultrawide camera.
-- Digital zoom cannot recover detail that the sensor did not capture.
-- Person and Car Follow are visual template tracking, not identity recognition or object detection.
-- Smart Plate captures only when enabled, the view is at least 4x, and the frame is steady.
-- The browser can read plate text but cannot reliably identify a vehicle make or model without a trained detection model.
-- OCR downloads its language model once and may require network access.
-- Camera controls depend on capabilities exposed by the browser and device.
-- Auto Pro uses browser-supported exposure compensation and focus distance; Chrome does not expose true ISO or shutter speed controls for this app.
+It reports secure-context status, camera permission failures, selected track settings and the active preview.
 
 ## Privacy
 
-Camera processing happens locally in the browser. The app does not include analytics, facial recognition, identity databases, or background tracking.
+Camera frames and captures are processed locally by the web application.
+
+The project does not intentionally send camera captures to a server, include analytics, maintain an identity database, or perform background surveillance.
+
+Third-party OCR resources, when enabled by the browser/app, are separate from the camera application's local gallery and should be considered when using offline mode.
+
+## Development notes
+
+The code is dependency-light and deliberately defensive around browser capability differences. Features are only advertised as hardware-backed when the corresponding browser capability or camera input is actually present.
+
+Do not interpret a software enhancement, crop zoom, sharpening pass, or tracking box as evidence of additional camera hardware or an ML model that is not present.
