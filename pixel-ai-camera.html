@@ -2526,6 +2526,7 @@ async function boot(){
     E("btnStart").textContent="REQUESTING…";
     try{ await Cam.start(S.cam.deviceId||undefined);
       if(APP.state!=="ready")return;
+      window.PixelAppControllerInstance=new PixelAppController().attach({video:Cam.video,track:APP.track});
       E("permScreen").classList.add("hide");E("app").classList.remove("hide");
       Rend.resize();await Cam.list();buildCamList();
       if(S.sys.motion)Perms.enableMotion();
