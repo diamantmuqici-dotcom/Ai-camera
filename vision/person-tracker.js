@@ -1,0 +1,1 @@
+"use strict";class PersonTracker extends SubjectTracker{constructor(){super();this.type="person"}}window.PersonTracker=PersonTracker;
