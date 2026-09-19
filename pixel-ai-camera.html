@@ -272,6 +272,7 @@ body.minimal #hudStrip,body.minimal #meterBox,body.minimal #histWrap{opacity:0;p
   #bottomBar{padding:4px 60px 6px} #zoomCluster{right:70px}
 }
 </style>
+<link rel="stylesheet" href="./css/app.css"><link rel="stylesheet" href="./css/camera.css"><link rel="stylesheet" href="./css/controls.css"><link rel="stylesheet" href="./css/panels.css"><link rel="stylesheet" href="./css/gallery.css"><link rel="stylesheet" href="./css/responsive.css">
 </head>
 <body>
 
@@ -583,6 +584,28 @@ body.minimal #hudStrip,body.minimal #meterBox,body.minimal #histWrap{opacity:0;p
 <script src="./camera-core.js"></script>
 <script src="./readers.js"></script>
 <script src="./tracking.js"></script>
+<script src="./core/camera-capabilities.js"></script>
+<script src="./core/device-profile.js"></script>
+<script src="./core/camera-session.js"></script>
+<script src="./core/camera-manager.js"></script>
+<script src="./core/lens-manager.js"></script>
+<script src="./core/zoom-engine.js"></script>
+<script src="./core/gesture-engine.js"></script>
+<script src="./core/app-controller.js"></script>
+<script src="./diagnostics/performance-monitor.js"></script>
+<script src="./diagnostics/capability-report.js"></script>
+<script src="./diagnostics/debug-console.js"></script>
+<script src="./storage/settings-store.js"></script>
+<script src="./vision/scene-analyzer.js"></script>
+<script src="./vision/subject-tracker.js"></script>
+<script src="./vision/person-tracker.js"></script>
+<script src="./vision/car-tracker.js"></script>
+<script src="./vision/plate-detector.js"></script>
+<script src="./vision/vision-engine.js"></script>
+<script src="./capture/burst-capture.js"></script>
+<script src="./capture/video-capture.js"></script>
+<script src="./processing/processing-queue.js"></script>
+<script src="./processing/enhancement-engine.js"></script>
 <script src="./adaptive-engine.js"></script>
 <script src="./camera-lens-router.js"></script>
 <script src="./app.js"></script>
@@ -2325,7 +2348,7 @@ const Loop={
   run(t){
     requestAnimationFrame(Loop.run);
     const dt=Math.min(50,Loop.last? t-Loop.last:16);Loop.last=t;
-    if(!Cam.video.videoWidth)return;
+    if(!Cam.video.videoWidth)return; window.PixelAppControllerInstance?.tick();
 
     // Keep camera presentation close to the display refresh rate, but throttle
     // expensive analysis/tracking independently of preview rendering.
@@ -2510,7 +2533,7 @@ async function boot(){
     }
   };
   E("btnStart").onclick=startCamera;
-  Settings.load();Ana.init();Proc.init();Rend.init();Gestures.init();bindUI();
+  Settings.load();Ana.init();Proc.init();Rend.init();Gestures.init();bindUI(); window.PixelAppControllerInstance=new PixelAppController().attach({video:Cam.video,track:APP.track});
   await Gal.init();UI.sync();Modes.apply(S.mode||"photo");
   if(S.sys.wake)Wake.toggle(true);
   if("getBattery"in navigator)navigator.getBattery().then(b=>{
