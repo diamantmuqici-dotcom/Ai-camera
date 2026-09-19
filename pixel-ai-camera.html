@@ -731,7 +731,7 @@ const UI={
         if(wide){
           const current=APP.track?.getSettings().deviceId;
           const wideCam=(window.LensRouter?.findUltrawide(current))||APP.devices.find(d=>d.deviceId!==current&&/ultra|wide|0\.5/i.test(d.label||""));
-          if(wideCam)Cam.switchCamera(wideCam.deviceId);
+          if(wideCam)Cam.switchCamera(wideCam.deviceId).then(()=>Zoom.setTarget(.5));
           else toast("0.5× wide camera is not exposed by this browser","err");
           return;
         }
@@ -901,7 +901,7 @@ const Zoom={
   target:1,current:1,hwCurrent:1,lastHwApply:0,
   offX:0,offY:0,             // digital crop offsets (−0.5..0.5 of frame)
   hwMax(){const z=APP.caps.zoom;return z&&z.max>1?z.max:1;},
-  setTarget(t,silent){this.target=clamp(t,1,this.MAX);
+  setTarget(t,silent){this.target=clamp(t,this.minTarget(),this.MAX);
     if(!silent)UI.updateZoomUI(); Scene.check();},
   nudge(f){this.setTarget(this.target*f);},
   digital(){return Math.max(1,this.current/Math.max(1,this.hwCurrent));},
@@ -909,7 +909,7 @@ const Zoom={
     // smooth toward target
     this.current=lerp(this.current,this.target,0.28);
     if(Math.abs(this.current-this.target)<0.002)this.current=this.target;
-    const H=this.hwMax(),hw=clamp(this.current,1,H);
+    const H=this.hwMax(),L=this.hwMin(),hw=clamp(this.current,L,H);
     if(hw!==this.hwCurrent&&(force||now()-this.lastHwApply>90)){
       this.hwCurrent=hw;this.lastHwApply=now();
       Caps.apply({zoom:Math.round(hw*100)/100});}
