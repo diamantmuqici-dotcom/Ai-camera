@@ -1,4 +1,4 @@
-const CACHE="pixel-ai-camera-v5";
+const CACHE="pixel-ai-camera-v6";
 const FILES=[
   "./",
   "./index.html",
@@ -19,7 +19,7 @@ const FILES=[
   "./core/camera-capabilities.js","./core/device-profile.js","./core/camera-session.js","./core/camera-manager.js","./core/lens-manager.js","./core/zoom-engine.js","./core/gesture-engine.js","./core/app-controller.js",
   "./diagnostics/performance-monitor.js","./diagnostics/capability-report.js","./diagnostics/debug-console.js","./diagnostics/camera-diagnostics.js","./diagnostics/device-report.js",
   "./storage/settings-store.js","./storage/gallery-db.js","./storage/export-manager.js",
-  "./processing/processing-queue.js","./processing/enhancement-engine.js",
+  "./processing/processing-queue.js","./processing/enhancement-engine.js","./processing/upscale-engine.js","./processing/pipeline.js","./capture/capture-manager.js","./diagnostics/startup-diagnostics.js","./privacy.html","./package.json","./capacitor.config.json",
   "./vision/vision-engine.js","./vision/scene-analyzer.js","./vision/subject-tracker.js","./vision/person-tracker.js","./vision/car-tracker.js","./vision/plate-detector.js","./vision/document-detector.js",
   "./capture/burst-capture.js","./capture/video-capture.js",
   "./workers/tracking-worker.js","./workers/super-resolution-worker.js",
