@@ -2536,7 +2536,7 @@ async function boot(){
     }
   };
   E("btnStart").onclick=startCamera;
-  Settings.load();Ana.init();Proc.init();Rend.init();Gestures.init();bindUI(); window.PixelAppControllerInstance=new PixelAppController().attach({video:Cam.video,track:APP.track});
+  Settings.load();Ana.init();Proc.init();Rend.init();Gestures.init();bindUI();
   await Gal.init();UI.sync();Modes.apply(S.mode||"photo");
   if(S.sys.wake)Wake.toggle(true);
   if("getBattery"in navigator)navigator.getBattery().then(b=>{
