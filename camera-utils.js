@@ -1,6 +1,5 @@
 "use strict";
 
-/* Shared camera utilities. No external dependencies. */
 export function isMobile() {
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
@@ -42,10 +41,6 @@ export function capabilityRange(capabilities, key) {
   if (!c || typeof c !== "object") return null;
   if (!Number.isFinite(c.min) || !Number.isFinite(c.max)) return null;
   return { min: c.min, max: c.max, step: Number.isFinite(c.step) ? c.step : undefined };
-}
-
-export function supportsImageCapture() {
-  return typeof window.ImageCapture === "function";
 }
 
 export function supportsOffscreenCanvas() {
