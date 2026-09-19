@@ -13,6 +13,8 @@ const FILES=[
   "./readers.js",
   "./tracking.js",
   "./app.js",
+  "./adaptive-engine.js",
+  "./camera-lens-router.js",
   "./settings.json"
 ];
 
