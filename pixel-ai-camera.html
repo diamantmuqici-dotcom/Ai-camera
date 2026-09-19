@@ -581,34 +581,34 @@ body.minimal #hudStrip,body.minimal #meterBox,body.minimal #histWrap{opacity:0;p
 
 <div id="toasts"></div>
 
-<script src="./camera-core.js"></script>
-<script src="./readers.js"></script>
-<script src="./tracking.js"></script>
-<script src="./core/camera-capabilities.js"></script>
-<script src="./core/device-profile.js"></script>
-<script src="./core/camera-session.js"></script>
-<script src="./core/camera-manager.js"></script>
-<script src="./core/lens-manager.js"></script>
-<script src="./core/zoom-engine.js"></script>
-<script src="./core/gesture-engine.js"></script>
-<script src="./core/app-controller.js"></script>
-<script src="./diagnostics/performance-monitor.js"></script>
-<script src="./diagnostics/capability-report.js"></script>
-<script src="./diagnostics/debug-console.js"></script>
-<script src="./storage/settings-store.js"></script>
-<script src="./vision/scene-analyzer.js"></script>
-<script src="./vision/subject-tracker.js"></script>
-<script src="./vision/person-tracker.js"></script>
-<script src="./vision/car-tracker.js"></script>
-<script src="./vision/plate-detector.js"></script>
-<script src="./vision/vision-engine.js"></script>
-<script src="./capture/burst-capture.js"></script>
-<script src="./capture/video-capture.js"></script>
-<script src="./processing/processing-queue.js"></script>
-<script src="./processing/enhancement-engine.js"></script>
-<script src="./adaptive-engine.js"></script>
-<script src="./camera-lens-router.js"></script>
-<script src="./app.js"></script>
+<script defer src="./camera-core.js"></script>
+<script defer src="./readers.js"></script>
+<script defer src="./tracking.js"></script>
+<script defer src="./core/camera-capabilities.js"></script>
+<script defer src="./core/device-profile.js"></script>
+<script defer src="./core/camera-session.js"></script>
+<script defer src="./core/camera-manager.js"></script>
+<script defer src="./core/lens-manager.js"></script>
+<script defer src="./core/zoom-engine.js"></script>
+<script defer src="./core/gesture-engine.js"></script>
+<script defer src="./core/app-controller.js"></script>
+<script defer src="./diagnostics/performance-monitor.js"></script>
+<script defer src="./diagnostics/capability-report.js"></script>
+<script defer src="./diagnostics/debug-console.js"></script>
+<script defer src="./storage/settings-store.js"></script>
+<script defer src="./vision/scene-analyzer.js"></script>
+<script defer src="./vision/subject-tracker.js"></script>
+<script defer src="./vision/person-tracker.js"></script>
+<script defer src="./vision/car-tracker.js"></script>
+<script defer src="./vision/plate-detector.js"></script>
+<script defer src="./vision/vision-engine.js"></script>
+<script defer src="./capture/burst-capture.js"></script>
+<script defer src="./capture/video-capture.js"></script>
+<script defer src="./processing/processing-queue.js"></script>
+<script defer src="./processing/enhancement-engine.js"></script>
+<script defer src="./adaptive-engine.js"></script>
+<script defer src="./camera-lens-router.js"></script>
+<script defer src="./app.js"></script>
 <script>
 "use strict";
 function showRuntimeError(message){
@@ -2548,7 +2548,7 @@ async function boot(){
 }
 if("serviceWorker"in navigator&&location.protocol!=="file:")
   navigator.serviceWorker.register("./service-worker.js").catch(e=>console.warn("[offline cache]",e));
-window.addEventListener("load",boot);
+document.addEventListener("DOMContentLoaded",boot,{once:true});
 </script>
 </body>
 </html>
