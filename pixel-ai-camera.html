@@ -774,48 +774,62 @@ const Cam={
     return "CAMERA";},
   async start(deviceId){
     this.stop(); UI.setState("starting");
-    if(!window.isSecureContext||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){
       const err=new Error("Camera access requires HTTPS or localhost.");err.name="SecurityError";
       this.fail(err);return false;
     }
+
     const resMap={"1080":{w:1920,h:1080},"1440":{w:2560,h:1440},"2160":{w:3840,h:2160},"max":{w:8000,h:8000}};
-    const r=resMap[S.cam.res]||resMap["1440"];
-    const base={video:deviceId?{deviceId:{exact:deviceId}}:true};
+    const r=resMap[S.cam.res]||resMap["1080"];
+    const video=deviceId
+      ? {deviceId:{exact:deviceId}}
+      : {facingMode:{ideal:S.cam.facing}};
+
+    Object.assign(video,{
+      width:{ideal:r.w},
+      height:{ideal:r.h},
+      frameRate:{ideal:S.vid.fps}
+    });
+
     let stream=null;
     try{
-      const request=navigator.mediaDevices.getUserMedia(base);
-      stream=await Promise.race([request,new Promise((_,reject)=>setTimeout(()=>{
-        const e=new Error("Camera permission request timed out. Check Chrome camera permission for this site and retry.");
-        e.name="PermissionTimeoutError";reject(e);
-      },12000))]);
+      // Request the desired camera mode up front instead of opening an unconstrained
+      // stream and immediately renegotiating it. This reduces startup churn.
+      stream=await Promise.race([
+        navigator.mediaDevices.getUserMedia({video,audio:false}),
+        new Promise((_,reject)=>setTimeout(()=>{
+          const e=new Error("Camera permission request timed out.");e.name="PermissionTimeoutError";reject(e);
+        },12000))
+      ]);
+    }catch(e1){
+      // Capability fallback: preserve camera access if a requested resolution/FPS is rejected.
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({
+          video:deviceId?{deviceId:{exact:deviceId}}:{facingMode:{ideal:S.cam.facing}},
+          audio:false
+        });
+      }catch(e2){this.fail(e2);return false;}
     }
-    catch(e1){
-      if(e1.name==="OverconstrainedError"||e1.name==="NotFoundError"){
-        try{stream=await navigator.mediaDevices.getUserMedia({video:deviceId?{deviceId:{exact:deviceId}}:true});}
-        catch(e2){this.fail(e2);return false;}
-      } else {this.fail(e1);return false;}
-    }
+
     APP.stream=stream;APP.track=stream.getVideoTracks()[0];
-    this.video.srcObject=stream;await this.video.play().catch(()=>{});
-    try{await APP.track.applyConstraints({
-      ...(deviceId?{}:{facingMode:{ideal:S.cam.facing}}),
-      width:{ideal:r.w},height:{ideal:r.h},frameRate:{ideal:S.vid.fps}
-    });}catch(e){
-      console.warn("[cam preferences]",e);
-    }
+    this.video.srcObject=stream;
+    await this.video.play().catch(()=>{});
+
     try{await Caps.inspect();}catch(e){console.warn("[cam capabilities]",e);}
     AutoPilot.focusApplied=false;AutoPilot.wbApplied=false;AutoPilot.lastExposure=null;
+
     if(Array.isArray(APP.caps.focusMode)&&APP.caps.focusMode.includes("continuous-auto"))
       Caps.apply({focusMode:"continuous-auto"});
+
     APP.lensGuess=this.guessLens(APP.track.label);
     E("chipLens").textContent="LENS "+APP.lensGuess;
     await this.list();Settings.save();
     UI.setState("ready");
+
     try{Rend.resize();Zoom.apply(true);}catch(e){console.warn("[cam preview]",e);}
     toast(`${APP.lensGuess} · ${this.resLabel()}`,"ok",1800);
     return true;
-  },
-  resLabel(){const s=APP.track.getSettings();return `${s.width||"?"}×${s.height||"?"}`;},
+  },  resLabel(){const s=APP.track.getSettings();return `${s.width||"?"}×${s.height||"?"}`;},
   stop(){ if(APP.stream){APP.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
     APP.stream=null;APP.track=null;} },
   fail(err){
@@ -2185,29 +2199,63 @@ const Diag={
 /* ══════════ 23 · MAIN LOOP & BOOT ══════════ */
 const Loop={
   last:0,lastDraw:0,lastVideoFrames:0,slow:0,
-  run(t){requestAnimationFrame(Loop.run);
-    const dt=Math.min(50,t-Loop.last);Loop.last=t;
+  analysisTimer:0,trackingTimer:0,overlayTimer:0,
+  run(t){
+    requestAnimationFrame(Loop.run);
+    const dt=Math.min(50,this.last? t-this.last:16);this.last=t;
     if(!Cam.video.videoWidth)return;
-    const drawEvery=Rend.fastPreview?16:S.sys.perf==="max"?16:S.sys.perf==="quality"?24:33;
-    if(t-Loop.lastDraw<drawEvery)return;
-    Loop.lastDraw=t;
-    APP.fpsCount++;if(t-APP.lastFpsT>1000){
+
+    // Keep camera presentation close to the display refresh rate, but throttle
+    // expensive analysis/tracking independently of preview rendering.
+    const drawEvery=Rend.fastPreview?16:S.sys.perf==="max"?16:S.sys.perf==="quality"?20:16;
+    if(t-this.lastDraw<drawEvery)return;
+    this.lastDraw=t;
+
+    APP.fpsCount++;
+    if(t-APP.lastFpsT>1000){
       const q=Cam.video.getVideoPlaybackQuality?Cam.video.getVideoPlaybackQuality():null;
-      APP.fps=q&&q.totalVideoFrames!==undefined?q.totalVideoFrames-Loop.lastVideoFrames:APP.fpsCount;
-      if(q)Loop.lastVideoFrames=q.totalVideoFrames;
+      APP.fps=q&&q.totalVideoFrames!==undefined
+        ? q.totalVideoFrames-this.lastVideoFrames
+        : APP.fpsCount;
+      if(q)this.lastVideoFrames=q.totalVideoFrames;
       APP.fpsCount=0;APP.lastFpsT=t;
-      E("chipFps").textContent=APP.fps+" FPS";}
+      E("chipFps").textContent=(APP.fps||0)+" FPS";
+    }
+
     Zoom.apply();
+
     if(!Rend.fastPreview)Rend.draw();
-    Ana.tick(dt);
-    AutoPilot.tick();
-    SmartAssist.tick();
-    Track.tick();
-    Overlays.drawAnalog();Overlays.drawLevel();Overlays.drawMag();Overlays.drawNav();
-    // adaptive perf: if fps sags, drop preview DPR once
-    if(APP.fps&&APP.fps<18&&Loop.slow++>60&&S.sys.perf!=="battery"){
+
+    // Analyzer is useful for capture quality, but never needs to run every preview frame.
+    const analysisEvery=S.sys.perf==="max"?160:S.sys.perf==="quality"?200:S.sys.perf==="battery"?320:240;
+    if(t-this.analysisTimer>=analysisEvery){
+      this.analysisTimer=t;
+      Ana.tick(analysisEvery);
+      AutoPilot.tick();
+      SmartAssist.tick();
+    }
+
+    // Template tracking is deliberately capped to avoid stealing time from preview.
+    const trackingEvery=S.sys.perf==="max"?55:S.sys.perf==="quality"?70:90;
+    if(t-this.trackingTimer>=trackingEvery){
+      this.trackingTimer=t;
+      Track.tick();
+    }
+
+    // Lightweight UI overlays can follow the preview cadence.
+    Overlays.drawAnalog();Overlays.drawLevel();
+    if(t-this.overlayTimer>=80){
+      this.overlayTimer=t;
+      Overlays.drawMag();Overlays.drawNav();
+    }
+
+    if(APP.fps&&APP.fps<18&&this.slow++>60&&S.sys.perf!=="battery"){
       S.sys.perf="battery";Settings.save();Rend.resize();
-      toast("Performance drop detected → BATTERY preview profile","warn",3000);Loop.slow=-9999;}
+      toast("Performance drop detected → BATTERY preview profile","warn",3000);
+      this.slow=-9999;
+    }else if(APP.fps>=24){
+      this.slow=Math.max(0,this.slow-2);
+    }
   }
 };
 function bindUI(){
