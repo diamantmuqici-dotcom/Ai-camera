@@ -1,0 +1,1 @@
+"use strict";self.onmessage=e=>{const m=e.data||{};if(m.type!=="merge")return;/* Deliberately no fake AI: frame alignment/ML can be plugged in later. */self.postMessage({type:"unsupported",id:m.id,reason:"No SR model bundled; use computational enhancement pipeline"})};
