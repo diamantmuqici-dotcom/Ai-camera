@@ -1,111 +1,231 @@
 # Pixel AI Camera
 
-A local-first computational camera for Android Chrome and desktop browsers.
+A local-first computational camera for Android Chrome, Pixel devices, and desktop browsers.
 
-## What this build does
+The project is deliberately **capability-driven**: it uses hardware features only when the browser exposes them and labels software fallbacks honestly.
 
-- Uses the browser camera API with capability-aware constraints and safe fallbacks.
-- Prefers 1080p/60 FPS for a responsive preview when the device exposes it.
-- Uses browser-exposed hardware zoom when available and digital crop zoom above it.
-- Automatically adapts camera resolution/FPS as zoom, motion, battery state and device capabilities change.
-- Includes an HD capture path that preserves the highest practical source resolution without inventing detail.
-- Automatically routes 0.5× to a genuinely exposed ultrawide camera when the browser exposes one.
-- Does not claim a real 0.5x ultrawide lens unless Android/Chrome actually exposes a separate camera.
-- Keeps preview rendering lightweight and throttles expensive analysis/tracking independently.
-- Uses bounded background processing for capture enhancement and multi-frame workflows.
-- Supports HDR and multi-frame super-resolution workflows where the browser can provide the required frames.
-- Includes visual subject tracking with explicit 'no identity recognition' behavior.
-- Includes plate/text helper logic with temporal candidate stabilization; OCR itself depends on the OCR engine available to the app.
-- Fast Shot can save the original before enhancement completes.
-- Stores captures locally in IndexedDB.
-- Includes a PWA shell and versioned offline cache.
-- Includes camera diagnostics and a camera test page.
-- Does not upload captures or include analytics.
+## Architecture
 
-## Important reality checks
+The original prototype remains compatible, but the repository now has a modular foundation around the existing camera UI:
 
-A web app cannot manufacture camera hardware features that Chrome does not expose.
+```text
+core/
+  app-controller.js
+  camera-manager.js
+  camera-capabilities.js
+  camera-session.js
+  device-profile.js
+  lens-manager.js
+  zoom-engine.js
+  gesture-engine.js
 
-- A real ultrawide/0.5x view requires an ultrawide camera to be exposed as a selectable video input. No web application can force a browser to expose hidden camera hardware.
-- Digital zoom is cropping/resampling. It cannot recreate detail that was never captured.
-- Browser camera capabilities differ between Pixel models, Chrome versions and Android releases.
-- True ISO/shutter controls are not generally exposed through this app's browser API.
-- The included tracker is visual/template tracking, not face recognition, identity recognition, or a trained object detector.
-- No external ML model is bundled in this repository, so the detector worker intentionally reports that ML detection is unavailable instead of pretending otherwise.
-- OCR may require a network download for its engine/language data unless the browser already has the required resource cached.
+processing/
+  enhancement-engine.js
+  processing-queue.js
+  processing-worker.js
+  super-resolution-worker.js
 
-## Performance architecture
+vision/
+  vision-engine.js
+  scene-analyzer.js
+  subject-tracker.js
+  person-tracker.js
+  car-tracker.js
+  plate-detector.js
+  document-detector.js
 
-The preview path is intentionally separated from heavier work:
+capture/
+  burst-capture.js
+  video-capture.js
 
-1. Native camera video presents the live stream.
-2. Hardware zoom is applied only when the camera exposes a zoom capability.
-3. Digital crop/processing is throttled rather than recalculated unnecessarily.
-4. Histogram/sharpness analysis runs at a lower rate than preview rendering.
-5. Visual tracking runs at a bounded rate and reuses its working canvas.
-6. Capture enhancement can run asynchronously so the original can be saved first.
-7. The app reacts to sustained low preview FPS by moving toward a lower-cost processing profile.
+storage/
+  settings-store.js
+  gallery-db.js
+  export-manager.js
 
-For a Pixel, start with:
+diagnostics/
+  performance-monitor.js
+  camera-diagnostics.js
+  capability-report.js
+  device-report.js
+  debug-console.js
 
-- 1080p
-- 60 FPS if exposed
-- Balanced performance
-- Fast Shot enabled
-- Higher-quality enhancement for final captures rather than continuously processing the live preview
+workers/
+  tracking-worker.js
+  super-resolution-worker.js
 
-## Files
+css/
+  app.css
+  camera.css
+  controls.css
+  panels.css
+  gallery.css
+  responsive.css
+```
 
-This repository intentionally keeps the existing file layout:
+The existing `pixel-ai-camera.html` still owns the mature UI/capture implementation, while new services provide reusable primitives for gradually moving responsibilities out of the monolith without breaking the working camera.
 
-    index.html
-    pixel-ai-camera.html
-    cam-test.html
-    README.md
-    manifest.webmanifest
-    service-worker.js
-    camera-utils.js
-    detector-worker.js
-    settings.json
-    styles.css
-    camera-core.js
-    processing-worker.js
-    readers.js
-    tracking.js
-    app.js
-    adaptive-engine.js
-    camera-lens-router.js
+## Current capabilities
 
-No additional model directory or generated dependency file is required by this build.
+- Rear/front camera access with graceful fallbacks.
+- Capability inspection for resolution, frame rate, zoom, focus, exposure, torch and white balance.
+- Hardware zoom when exposed by the browser.
+- Digital crop fallback when hardware zoom is unavailable.
+- Real ultrawide routing only when a separate ultrawide camera input is exposed.
+- Pinch-to-zoom, double-tap, mouse-wheel, keyboard, presets and slider zoom.
+- Smooth zoom interpolation with bounded values.
+- Adaptive resolution/FPS requests with cooldowns.
+- Fast Shot: original capture can be saved before enhancement finishes.
+- Background processing with worker backpressure.
+- Burst capture and best-frame scoring infrastructure.
+- Video/MediaRecorder capability detection and codec fallback.
+- Local IndexedDB gallery in the existing application.
+- Lazy OCR path in the existing application.
+- Scene/quality heuristics and stability guidance.
+- Visual/template tracking without identity recognition.
+- PWA/offline shell with versioned cache.
+- Capability diagnostics and a standalone test harness.
+- Responsive OLED-style camera UI with safe-area and reduced-motion support.
+- No analytics and no intentional camera upload pipeline.
 
-## GitHub Pages
+## Zoom and lens reality
 
-Enable:
+Zoom states are intentionally distinguishable:
 
-**Settings → Pages → Deploy from branch → main → /root**
+- **HW** — browser-exposed camera zoom capability.
+- **DIGITAL** — crop/resampling beyond hardware zoom.
+- **AI/COMPUTATIONAL** — processing intended to improve the appearance of a digital crop; it does not create missing optical detail.
 
-Then open the HTTPS GitHub Pages address for the repository.
+A web page cannot force Chrome to expose a hidden Pixel ultrawide or telephoto camera. A 0.5× button can only switch to a genuinely exposed ultrawide input. Otherwise the app reports that hardware is unavailable instead of pretending.
 
-HTTPS (or localhost) is required by browsers for camera access.
+Pinch zoom is handled through pointer events with explicit multi-pointer state, cancellation, tap suppression and distance-based scaling.
 
-## Local Android testing
+## Computational photography
 
-The existing camera test page is:
+The current pipeline includes practical browser processing such as exposure/tone adjustment, denoise/sharpening paths, HDR-style exposure capture where controls permit it, and multi-frame capture infrastructure.
 
-    cam-test.html
+The repository **does not pretend ordinary sharpening is AI super-resolution**. The SR worker is an explicit extension point for a real alignment/ML model.
 
-It reports secure-context status, camera permission failures, selected track settings and the active preview.
+## AI / ML
+
+The architecture is ready for lazy browser inference through a dedicated vision layer. No large ML model is bundled by default.
+
+When no model is installed:
+
+- native/heuristic analysis can still operate;
+- tracking falls back to the application's visual/template mechanisms;
+- model-dependent detection reports unavailable rather than returning fabricated detections.
+
+This keeps the initial load small and avoids silently downloading large models.
+
+## Performance
+
+The live preview has priority over heavy processing.
+
+- Preview is driven by `requestAnimationFrame`.
+- Analysis and tracking run at bounded frequencies.
+- Workers use transferable buffers where applicable.
+- Stale work is dropped instead of building an unlimited queue.
+- Adaptive camera changes have cooldowns.
+- Performance monitoring tracks observable video frames and dropped frames.
+- The app can fall back toward a lower-cost profile after sustained preview degradation.
+
+## Camera API limitations
+
+Browser camera APIs differ across Android versions, Pixel models and browsers.
+
+The application cannot reliably expose true manual ISO, shutter speed, RAW capture, physical stabilization control, or hidden multi-camera hardware unless the browser provides the corresponding API.
+
+Likewise, a requested 4K/60 mode is not a guarantee that the camera will actually deliver 4K/60. The app reads the resulting track settings and diagnostics.
 
 ## Privacy
 
-Camera frames and captures are processed locally by the web application.
+Camera processing and the local gallery are designed to stay on-device.
 
-The project does not intentionally send camera captures to a server, include analytics, maintain an identity database, or perform background surveillance.
+There is no analytics system and no identity database.
 
-Third-party OCR resources, when enabled by the browser/app, are separate from the camera application's local gallery and should be considered when using offline mode.
+OCR resources that are intentionally loaded from an external provider are separate from the local gallery. External model loading should be treated as an explicit network dependency.
 
-## Development notes
+## PWA / offline
 
-The code is dependency-light and deliberately defensive around browser capability differences. Features are only advertised as hardware-backed when the corresponding browser capability or camera input is actually present.
+The service worker caches the application shell and modular runtime files. The manifest includes local SVG icons and shortcuts.
 
-Do not interpret a software enhancement, crop zoom, sharpening pass, or tracking box as evidence of additional camera hardware or an ML model that is not present.
+Offline support is strongest for the core camera UI and local processing. Features that explicitly depend on an external OCR/model download still require that resource to have been cached previously.
+
+## Testing
+
+### Camera lab
+
+Open:
+
+`cam-test.html`
+
+It probes:
+
+- camera inputs
+- actual track settings
+- capability ranges
+- zoom
+- focus
+- exposure
+- torch
+- frame rate
+- ImageCapture
+- MediaRecorder
+- WebGPU
+- WebAssembly
+- workers
+- storage
+
+### Unit test harness
+
+Open:
+
+`test-harness.html`
+
+It runs deterministic tests for:
+
+- zoom clamping
+- pinch math
+- lens classification
+- OCR plate heuristics
+- scene analysis
+
+## Android / Pixel setup
+
+1. Deploy the repository over HTTPS, such as GitHub Pages.
+2. Open the camera page in Chrome on the Pixel.
+3. Grant camera permission.
+4. Use `cam-test.html` before debugging a device-specific feature.
+5. Install the PWA from Chrome when offered.
+
+Camera access requires a secure context such as HTTPS or localhost.
+
+## GitHub Pages
+
+Enable GitHub Pages from the repository's **Settings → Pages** section and deploy the `main` branch.
+
+## Development principles
+
+- Preserve working behavior before replacing it.
+- Prefer browser capability detection over user-agent assumptions.
+- Keep preview responsive.
+- Never fabricate hardware or ML support.
+- Keep expensive work asynchronous.
+- Bound queues and memory.
+- Keep storage local.
+- Fail one subsystem without crashing the whole camera.
+
+## Roadmap
+
+The modular foundation now makes it practical to add:
+
+- real browser ML models loaded on demand;
+- geometric document detection and perspective correction;
+- true multi-frame alignment;
+- temporal plate OCR voting;
+- stronger device-specific performance calibration;
+- richer local gallery metadata;
+- more complete automated browser/device tests.
+
+Those features should only be promoted to **available** once their underlying implementation and browser/device support are real.
