@@ -1,4 +1,4 @@
-const CACHE="pixel-ai-camera-v3";
+const CACHE="pixel-ai-camera-v4";
 const FILES=[
   "./",
   "./index.html",
@@ -15,7 +15,17 @@ const FILES=[
   "./app.js",
   "./adaptive-engine.js",
   "./camera-lens-router.js",
-  "./settings.json"
+  "./settings.json",
+  "./core/camera-capabilities.js","./core/device-profile.js","./core/camera-session.js","./core/camera-manager.js","./core/lens-manager.js","./core/zoom-engine.js","./core/gesture-engine.js","./core/app-controller.js",
+  "./diagnostics/performance-monitor.js","./diagnostics/capability-report.js","./diagnostics/debug-console.js","./diagnostics/camera-diagnostics.js","./diagnostics/device-report.js",
+  "./storage/settings-store.js","./storage/gallery-db.js","./storage/export-manager.js",
+  "./processing/processing-queue.js","./processing/enhancement-engine.js",
+  "./vision/vision-engine.js","./vision/scene-analyzer.js","./vision/subject-tracker.js","./vision/person-tracker.js","./vision/car-tracker.js","./vision/plate-detector.js","./vision/document-detector.js",
+  "./capture/burst-capture.js","./capture/video-capture.js",
+  "./workers/tracking-worker.js","./workers/super-resolution-worker.js",
+  "./tests/unit.js","./test-harness.html",
+  "./css/app.css","./css/camera.css","./css/controls.css","./css/panels.css","./css/gallery.css","./css/responsive.css",
+  "./icons/icon-192.svg","./icons/icon-512.svg"
 ];
 
 self.addEventListener("install",event=>{
