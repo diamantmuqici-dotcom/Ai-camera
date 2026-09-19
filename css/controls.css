@@ -1,0 +1,1 @@
+.btn,.zp{min-height:42px;transition:transform .12s,background .15s,border-color .15s}.btn:active,.zp:active{transform:scale(.96)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--pc-accent);outline-offset:2px}
