@@ -1,32 +1,40 @@
 {
-  "profiles": {
-    "fast": {
-      "resolution": "1080",
-      "fps": 60,
-      "performance": "battery",
-      "enhancement": "fast",
-      "superResolutionFrames": 4
+  "profiles":{
+    "fast":{
+      "resolution":"1080",
+      "fps":60,
+      "performance":"battery",
+      "enhancement":"fast",
+      "superResolutionFrames":4
     },
-    "balanced": {
-      "resolution": "1080",
-      "fps": 30,
-      "performance": "balanced",
-      "enhancement": "balanced",
-      "superResolutionFrames": 8
+    "balanced":{
+      "resolution":"1080",
+      "fps":60,
+      "performance":"balanced",
+      "enhancement":"balanced",
+      "superResolutionFrames":6
     },
-    "quality": {
-      "resolution": "1440",
-      "fps": 30,
-      "performance": "quality",
-      "enhancement": "high",
-      "superResolutionFrames": 12
+    "quality":{
+      "resolution":"1440",
+      "fps":30,
+      "performance":"quality",
+      "enhancement":"high",
+      "superResolutionFrames":8
     },
-    "maximum": {
-      "resolution": "2160",
-      "fps": 30,
-      "performance": "max",
-      "enhancement": "ultra",
-      "superResolutionFrames": 16
+    "maximum":{
+      "resolution":"2160",
+      "fps":30,
+      "performance":"max",
+      "enhancement":"ultra",
+      "superResolutionFrames":12
     }
+  },
+  "runtime":{
+    "previewFrameBudgetMs":16,
+    "analysisHz":5,
+    "trackingHz":15,
+    "captureProcessing":"background",
+    "preferHardwareZoom":true,
+    "dropFramesUnderBackpressure":true
   }
 }
