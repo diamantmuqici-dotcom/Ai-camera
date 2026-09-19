@@ -1,0 +1,1 @@
+"use strict";window.DebugConsole={enabled:false,logs:[],log(...args){if(!this.enabled)return;this.logs.push({t:new Date().toISOString(),args:args.map(String)});if(this.logs.length>200)this.logs.shift()},dump(){return this.logs.slice()}};
