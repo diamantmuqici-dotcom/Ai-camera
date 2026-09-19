@@ -1,0 +1,1 @@
+"use strict";window.CameraDiagnostics={async enumerate(){const d=await navigator.mediaDevices?.enumerateDevices?.()||[];return d.filter(x=>x.kind==="videoinput").map(x=>({label:x.label,deviceId:x.deviceId,groupId:x.groupId}))}};
