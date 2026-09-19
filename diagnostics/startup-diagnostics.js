@@ -1,0 +1,1 @@
+"use strict";window.StartupDiagnostics={started:performance.now(),events:[],mark(name,extra={}){this.events.push({name,t:Math.round(performance.now()-this.started),...extra});if(this.events.length>100)this.events.shift()},report(){return{durationMs:Math.round(performance.now()-this.started),events:this.events.slice()}}};
