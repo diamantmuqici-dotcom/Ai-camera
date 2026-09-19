@@ -2356,16 +2356,16 @@ const Loop={
     // Keep camera presentation close to the display refresh rate, but throttle
     // expensive analysis/tracking independently of preview rendering.
     const drawEvery=Rend.fastPreview?16:S.sys.perf==="max"?16:S.sys.perf==="quality"?20:16;
-    if(t-this.lastDraw<drawEvery)return;
-    this.lastDraw=t;
+    if(t-Loop.lastDraw<drawEvery)return;
+    Loop.lastDraw=t;
 
     APP.fpsCount++;
     if(t-APP.lastFpsT>1000){
       const q=Cam.video.getVideoPlaybackQuality?Cam.video.getVideoPlaybackQuality():null;
       APP.fps=q&&q.totalVideoFrames!==undefined
-        ? q.totalVideoFrames-this.lastVideoFrames
+        ? q.totalVideoFrames-Loop.lastVideoFrames
         : APP.fpsCount;
-      if(q)this.lastVideoFrames=q.totalVideoFrames;
+      if(q)Loop.lastVideoFrames=q.totalVideoFrames;
       APP.fpsCount=0;APP.lastFpsT=t;
       E("chipFps").textContent=(APP.fps||0)+" FPS";
     }
