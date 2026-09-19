@@ -605,7 +605,7 @@ body.minimal #hudStrip,body.minimal #meterBox,body.minimal #histWrap{opacity:0;p
 <script defer src="./capture/burst-capture.js"></script>
 <script defer src="./capture/video-capture.js"></script>
 <script defer src="./processing/processing-queue.js"></script>
-<script defer src="./processing/enhancement-engine.js"></script>
+<script defer src="./processing/enhancement-engine.js"></script><script defer src="./processing/upscale-engine.js"></script><script defer src="./processing/pipeline.js"></script><script defer src="./capture/capture-manager.js"></script><script defer src="./diagnostics/startup-diagnostics.js"></script>
 <script defer src="./adaptive-engine.js"></script>
 <script defer src="./camera-lens-router.js"></script>
 <script defer src="./app.js"></script>
@@ -2521,14 +2521,14 @@ const Wake={sentinel:null,
 document.addEventListener("visibilitychange",()=>Wake.reattach());
 window.addEventListener("resize",()=>Rend.resize());
 
-async function boot(){
+async function boot(){window.StartupDiagnostics?.mark("boot-start");
   const startCamera=async()=>{
     E("btnStart").textContent="REQUESTING…";
-    try{ await Cam.start(S.cam.deviceId||undefined);
+    try{ window.StartupDiagnostics?.mark("camera-request"); await Cam.start(S.cam.deviceId||undefined); window.StartupDiagnostics?.mark("camera-ready");
       if(APP.state!=="ready")return;
       window.PixelAppControllerInstance=new PixelAppController().attach({video:Cam.video,track:APP.track});
       E("permScreen").classList.add("hide");E("app").classList.remove("hide");
-      Rend.resize();await Cam.list();buildCamList();
+      Rend.resize();await Cam.list();buildCamList();window.StartupDiagnostics?.mark("ui-ready");
       if(S.sys.motion)Perms.enableMotion();
     }catch(e){
       E("btnStart").textContent="ENABLE CAMERA";
