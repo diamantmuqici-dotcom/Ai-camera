@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101010">
+<title>Pixel Camera Diagnostic</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101010;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:16px}
+h1{font-size:21px;margin:0 0 12px}
+p{color:#aaa;font-size:13px}
+video{width:100%;max-height:60vh;display:block;background:#000;border-radius:12px;object-fit:contain}
+button{margin:10px 6px 0 0;padding:12px 15px;border:0;border-radius:9px;font-weight:700}
+pre{margin-top:12px;background:#181818;border-radius:10px;padding:12px;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.45}
+.ok{color:#8cff9a}.bad{color:#ff8585}
+</style>
+</head>
+<body>
+<h1>Pixel AI Camera Diagnostic</h1>
+<p>Minimal WebView camera test. This intentionally bypasses the Pixel AI Camera camera pipeline.</p>
+
+<video id="preview" autoplay playsinline muted></video>
+
+<div>
+<button id="rear">Rear Camera</button>
+<button id="front">Front Camera</button>
+<button id="stop">Stop</button>
+</div>
+
+<pre id="status"></pre>
+
+<script>
+const video=document.getElementById("preview");
+const status=document.getElementById("status");
+let stream=null;
+
+function log(message){
+  console.log("[CameraDiagnostic]",message);
+  status.textContent += message + "\n";
+}
+
+function clearLog(){status.textContent="";}
+
+function stopCamera(){
+  if(stream){
+    for(const track of stream.getTracks()) track.stop();
+    stream=null;
+  }
+  video.pause();
+  video.srcObject=null;
+}
+
+async function waitForFrame(timeoutMs=6000){
+  if(video.videoWidth>0 && video.videoHeight>0)return true;
+
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{
+      cleanup();
+      reject(new Error("Video never received non-zero dimensions"));
+    },timeoutMs);
+
+    const check=()=>{
+      if(video.videoWidth>0 && video.videoHeight>0){
+        cleanup();
+        resolve(true);
+      }
+    };
+
+    const cleanup=()=>{
+      clearTimeout(timer);
+      video.removeEventListener("loadedmetadata",check);
+      video.removeEventListener("canplay",check);
+      video.removeEventListener("playing",check);
+      video.removeEventListener("resize",check);
+    };
+
+    video.addEventListener("loadedmetadata",check);
+    video.addEventListener("canplay",check);
+    video.addEventListener("playing",check);
+    video.addEventListener("resize",check);
+  });
+}
+
+async function startCamera(facing){
+  clearLog();
+  log("=== CAMERA DIAGNOSTIC ===");
+  log("Requested camera: "+facing);
+  log("User agent: "+navigator.userAgent);
+  log("mediaDevices: "+Boolean(navigator.mediaDevices));
+  log("getUserMedia: "+Boolean(navigator.mediaDevices?.getUserMedia));
+
+  stopCamera();
+
+  if(!navigator.mediaDevices?.getUserMedia){
+    log("FAIL: getUserMedia is unavailable");
+    return;
+  }
+
+  if(navigator.permissions){
+    try{
+      const p=await navigator.permissions.query({name:"camera"});
+      log("Camera permission state: "+p.state);
+    }catch(e){
+      log("Permission query unavailable: "+e.message);
+    }
+  }
+
+  try{
+    log("Requesting getUserMedia...");
+
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ideal:facing},
+        width:{ideal:1920},
+        height:{ideal:1080},
+        frameRate:{ideal:30}
+      },
+      audio:false
+    });
+
+    log("SUCCESS: getUserMedia returned a stream");
+
+    const tracks=stream.getVideoTracks();
+    log("Video tracks: "+tracks.length);
+
+    for(const track of tracks){
+      log("Track: "+track.label);
+      log("Track state: "+track.readyState);
+      log("Track enabled: "+track.enabled);
+      try{
+        log("Settings: "+JSON.stringify(track.getSettings()));
+      }catch(e){}
+    }
+
+    video.srcObject=stream;
+    log("video.srcObject assigned");
+
+    await video.play();
+    log("video.play() resolved");
+
+    await waitForFrame();
+
+    log("video.readyState: "+video.readyState);
+    log("video.paused: "+video.paused);
+    log("video.videoWidth: "+video.videoWidth);
+    log("video.videoHeight: "+video.videoHeight);
+    log("video.currentTime: "+video.currentTime);
+
+    if(video.videoWidth>0 && video.videoHeight>0){
+      log("RESULT: VIDEO FRAME DIMENSIONS AVAILABLE");
+      log("If preview is still black, the issue is likely WebView rendering/compositing rather than getUserMedia acquisition.");
+    }else{
+      log("RESULT: STREAM EXISTS BUT NO VIDEO FRAME DIMENSIONS");
+    }
+
+  }catch(error){
+    log("=== CAMERA ERROR ===");
+    log("name: "+error?.name);
+    log("message: "+error?.message);
+    log("constraint: "+(error?.constraint||""));
+    log("====================");
+  }
+}
+
+document.getElementById("rear").onclick=()=>startCamera("environment");
+document.getElementById("front").onclick=()=>startCamera("user");
+document.getElementById("stop").onclick=()=>{
+  stopCamera();
+  log("Camera stopped.");
+};
+
+window.addEventListener("pagehide",stopCamera);
+window.addEventListener("beforeunload",stopCamera);
+
+log("Diagnostic loaded.");
+log("Tap Rear Camera to begin.");
+</script>
+</body>
+</html>
