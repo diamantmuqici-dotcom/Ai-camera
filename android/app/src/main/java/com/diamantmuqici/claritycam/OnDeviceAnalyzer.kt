@@ -13,7 +13,7 @@ class OnDeviceAnalyzer(
     private val recognizer: TextRecognizer,
     private val mainExecutor: Executor,
     private val tuning: () -> Tuning,
-    private val onTargets: (List<ScanTarget>, Float, Int, Int) -> Unit,
+    private val onTargets: (List<ScanTarget>, Float, Float, Int, Int) -> Unit,
     private val onError: (String) -> Unit,
 ) : ImageAnalysis.Analyzer {
     private val busy = AtomicBoolean(false)
@@ -27,6 +27,7 @@ class OnDeviceAnalyzer(
         var closed = false
         try {
             val focus = DetailEngine.focusScore(image)
+            val light = DetailEngine.averageLight(image)
             val original = DetailEngine.analysisBitmap(image)
             image.close()
             closed = true
@@ -50,7 +51,7 @@ class OnDeviceAnalyzer(
                         ), kind)
                     }.sortedByDescending { (it.bounds.right - it.bounds.left) *
                         (it.bounds.bottom - it.bounds.top) }.take(8)
-                    onTargets(targets, focus, enhanced.width, enhanced.height)
+                    onTargets(targets, focus, light, enhanced.width, enhanced.height)
                 }
                 .addOnFailureListener(mainExecutor) { onError("Text scanner unavailable: ${it.localizedMessage}") }
                 .addOnCompleteListener(mainExecutor) { enhanced.recycle(); busy.set(false) }

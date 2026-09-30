@@ -18,6 +18,22 @@ object DetailEngine {
     private fun luminance(pixel: Int): Int = (((pixel shr 16 and 255) * 54 +
         (pixel shr 8 and 255) * 183 + (pixel and 255) * 19) shr 8)
 
+    fun averageLight(image: ImageProxy): Float {
+        val plane = image.planes[0]
+        var total = 0L
+        var count = 0
+        for (y in 0 until image.height step 24) {
+            for (x in 0 until image.width step 24) {
+                val index = y * plane.rowStride + x * plane.pixelStride
+                if (index < plane.buffer.limit()) {
+                    total += (plane.buffer.get(index).toInt() and 255)
+                    count++
+                }
+            }
+        }
+        return if (count > 0) total.toFloat() / count else 0f
+    }
+
     fun focusScore(image: ImageProxy): Float {
         val plane = image.planes[0]
         val bytes = plane.buffer

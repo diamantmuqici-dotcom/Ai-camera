@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity(), CameraController.Listener {
     private var streaming = false
     private var permissionProblem = false
     private var lastTarget: ScanTarget? = null
+    private var nearBlackFrames = 0
     private var lastUri: Uri? = null
     private val permissionRequest = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) startCamera() else showProblem("Camera access needed",
@@ -251,11 +252,16 @@ class MainActivity : ComponentActivity(), CameraController.Listener {
         ui.torchButton.alpha = if (torchAvailable) 1f else .35f
     }
 
-    override fun onTargets(targets: List<ScanTarget>, focus: Float, width: Int, height: Int, front: Boolean) {
+    override fun onTargets(targets: List<ScanTarget>, focus: Float, light: Float, width: Int, height: Int, front: Boolean) {
         val shown = if (tuning.scanMode == ScanMode.PLATE) targets.filter { it.kind == ScanMode.PLATE } else targets
         ui.overlay.show(shown, width, height, front)
         lastTarget = shown.firstOrNull()
-        ui.scanResult.text = lastTarget?.let {
+        val wasDark = nearBlackFrames >= 3
+        nearBlackFrames = if (light < 4f) nearBlackFrames + 1 else 0
+        if (nearBlackFrames >= 3) hint("Almost black camera frames • check lens cover, privacy switch and lighting")
+        else if (wasDark) hint("Camera view restored • scanning locally")
+        ui.scanResult.text = if (nearBlackFrames >= 3) "CAMERA FRAMES DARK  /  CHECK LENS"
+        else lastTarget?.let {
             (if (it.kind == ScanMode.PLATE) "PLATE?  " else "TEXT  ") + it.text
         } ?: if (focus < 5f) "HOLD STEADY  /  ADD MORE LIGHT" else "SEARCHING FOR CLEAR TEXT…"
         if (tuning.autoSnap && snapper.observe(lastTarget, controller?.currentZoom ?: 1f,

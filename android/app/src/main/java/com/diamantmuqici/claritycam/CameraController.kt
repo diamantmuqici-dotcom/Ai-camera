@@ -52,7 +52,7 @@ class CameraController(
         fun onStreaming()
         fun onFps(value: Int)
         fun onZoom(value: Float, max: Float, halfAvailable: Boolean, torchAvailable: Boolean)
-        fun onTargets(targets: List<ScanTarget>, focus: Float, width: Int, height: Int, front: Boolean)
+        fun onTargets(targets: List<ScanTarget>, focus: Float, light: Float, width: Int, height: Int, front: Boolean)
         fun onHint(message: String)
         fun onSaved(uri: Uri)
         fun onCaptureError(message: String)
@@ -190,8 +190,8 @@ class CameraController(
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
             analysis.setAnalyzer(analysisExecutor, OnDeviceAnalyzer(recognizer, main, tuning,
-                { targets, focus, width, height ->
-                    if (generation == localGeneration) listener.onTargets(targets, focus, width, height, front)
+                { targets, focus, light, width, height ->
+                    if (generation == localGeneration) listener.onTargets(targets, focus, light, width, height, front)
                 }, { message -> if (generation == localGeneration) listener.onHint(message) }))
             val photo = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
