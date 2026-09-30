@@ -108,17 +108,25 @@ class CameraWorker(threading.Thread):
             self.events.camera_state.emit(self.session, "starting", f"Opening camera {self.index}…")
             backend = cv2.CAP_DSHOW if os.name == "nt" else cv2.CAP_ANY
             cap = cv2.VideoCapture(self.index, backend)
+            if not cap.isOpened() and os.name == "nt":
+                cap.release()
+                cap = cv2.VideoCapture(self.index, cv2.CAP_MSMF)
             if not cap.isOpened():
                 raise RuntimeError(f"Camera {self.index} could not be opened. Check its index, Windows camera privacy settings, or another app using it.")
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+            # MJPEG often unlocks the webcam's full frame rate; drivers may ignore it.
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+            # 60 FPS is usually a lower-resolution webcam mode. OCR still uses the
+            # original delivered pixels; never label a resize as extra detail.
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280 if self.settings.target_fps == 60 else 1920)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720 if self.settings.target_fps == 60 else 1080)
             cap.set(cv2.CAP_PROP_FPS, self.settings.target_fps)
-            self.events.camera_state.emit(self.session, "ready", "Live camera • scanning on this device")
+            self.events.camera_state.emit(self.session, "ready", "Camera opened • waiting for frames")
             times: deque[float] = deque(maxlen=120)
             last_fps = last_preview = last_scan = 0.0
             failures = dark_frames = 0
             warned_dark = False
+            announced_size = False
             while not self.stopping.is_set():
                 ok, frame = cap.read()
                 if not ok or frame is None or frame.size == 0:
@@ -128,6 +136,10 @@ class CameraWorker(threading.Thread):
                     time.sleep(0.03)
                     continue
                 failures = 0
+                if not announced_size:
+                    height, width = frame.shape[:2]
+                    self.events.camera_state.emit(self.session, "ready", f"Live {width}×{height} • local OCR")
+                    announced_size = True
                 now = time.monotonic()
                 times.append(now)
                 with self._lock:

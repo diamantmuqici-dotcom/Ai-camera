@@ -542,6 +542,7 @@ class MainWindow(QMainWindow):
         if session != self.session:
             return
         self.status_label.setText(state.upper())
+        self.status_label.setToolTip(message)
         if state == "error":
             self.preview.clear()
             self.preview.set_state("CAMERA NEEDS ATTENTION", message + "  Photos and OCR need a live camera.", retry=True)
@@ -552,6 +553,8 @@ class MainWindow(QMainWindow):
         elif state == "starting":
             self.preview.set_state("OPENING CAMERA", message)
         else:
+            if message.startswith("Live "):
+                self.status_label.setText(message.split(" • ")[0].upper())
             self.preview.set_state("CAMERA READY", "Waiting for the first frame…")
 
     def _on_fps(self, session: int, fps: float) -> None:

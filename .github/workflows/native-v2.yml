@@ -86,13 +86,23 @@ jobs:
       - name: Package portable native EXE and OCR files
         shell: pwsh
         run: |
-          python desktop/tools/make_icon.py
-          $ocr = Join-Path $env:ProgramFiles 'Tesseract-OCR'
-          pyinstaller --noconfirm --clean --onedir --windowed --name ClarityCam `
-            --icon desktop/assets/clarity.ico --add-data "$ocr;tesseract" desktop/run.py `
-            --distpath desktop/dist --workpath desktop/build --specpath desktop
-          if (-not (Test-Path 'desktop/dist/ClarityCam/ClarityCam.exe')) { throw 'EXE was not produced' }
-          Compress-Archive -Path 'desktop/dist/ClarityCam/*' -DestinationPath 'desktop/ClarityCam-V2-Windows.zip' -Force
+          function Report-Failure([string]$message) {
+            $detail = $message.Substring(0, [Math]::Min(12000, $message.Length)).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows packaging failed::$detail"
+            exit 1
+          }
+          try {
+            python desktop/tools/make_icon.py 2>&1 | Tee-Object -FilePath desktop/package-output.log
+            if ($LASTEXITCODE -ne 0) { Report-Failure ((Get-Content desktop/package-output.log -Raw)) }
+            $ocr = Join-Path $env:ProgramFiles 'Tesseract-OCR'
+            pyinstaller --noconfirm --clean --onedir --windowed --name ClarityCam `
+              --icon desktop/assets/clarity.ico --add-data "$ocr;tesseract" desktop/run.py `
+              --distpath desktop/dist --workpath desktop/build --specpath desktop 2>&1 | Tee-Object -FilePath desktop/package-output.log -Append
+            if ($LASTEXITCODE -ne 0) { Report-Failure ((Get-Content desktop/package-output.log -Tail 60) -join "`n") }
+            if (-not (Test-Path 'desktop/dist/ClarityCam/ClarityCam.exe')) { Report-Failure 'EXE was not produced' }
+            Compress-Archive -Path 'desktop/dist/ClarityCam/*' -DestinationPath 'desktop/ClarityCam-V2-Windows.zip' -Force
+            if (-not (Test-Path 'desktop/ClarityCam-V2-Windows.zip')) { Report-Failure 'Portable zip was not produced' }
+          } catch { Report-Failure $_.Exception.Message }
       - name: Upload portable Windows app
         uses: actions/upload-artifact@v4
         with:

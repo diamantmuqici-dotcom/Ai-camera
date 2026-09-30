@@ -11,8 +11,10 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Range
+import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraFilter
@@ -36,6 +38,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 /** CameraX preview/capture + Camera2 controls. 0.5× only if a physical wide view is exposed. */
+@OptIn(ExperimentalCamera2Interop::class)
 class CameraController(
     private val activity: MainActivity,
     private val view: PreviewView,

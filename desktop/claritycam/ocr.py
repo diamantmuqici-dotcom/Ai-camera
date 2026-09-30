@@ -39,7 +39,10 @@ def plate_key(text: str) -> str:
 
 
 def looks_like_plate(text: str, aspect: float = 3.0) -> bool:
-    key = plate_key(text)
+    raw = unicodedata.normalize("NFKC", text).upper().strip()
+    if not re.fullmatch(r"[A-Z0-9\s-]+", raw):
+        return False
+    key = plate_key(raw)
     return (5 <= len(key) <= 10 and 1.5 <= aspect <= 12.0
             and sum(c.isalpha() for c in key) >= 1
             and sum(c.isdigit() for c in key) >= 2

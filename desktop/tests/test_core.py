@@ -68,6 +68,7 @@ class ScanTests(unittest.TestCase):
         self.assertFalse(looks_like_plate("WELCOME"))
         self.assertFalse(looks_like_plate("123456"))
         self.assertFalse(looks_like_plate("A1"))
+        self.assertFalse(looks_like_plate("AB@123"))
         self.assertEqual(plate_key("ab-o012"), "ABO012")
 
     def test_tesseract_word_groups_give_bounding_boxes(self):
