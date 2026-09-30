@@ -20,15 +20,27 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Install Android 35 SDK
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Check or install Android 35 SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          if [ ! -d "$ANDROID_HOME/platforms/android-35" ] || [ ! -d "$ANDROID_HOME/build-tools/35.0.0" ]; then
+            sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          fi
+          test -d "$ANDROID_HOME/platforms/android-35"
       - name: Test and assemble debug APK
         working-directory: android
-        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+        run: |
+          set +e
+          gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/clarity-android-build.log
+          result=${PIPESTATUS[0]}
+          if [ "$result" -ne 0 ]; then
+            detail=$(tail -n 65 /tmp/clarity-android-build.log | tr '\n' ' ' | cut -c 1-12000)
+            echo "::error title=Android build failed::$detail"
+            exit "$result"
+          fi
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
@@ -64,7 +76,13 @@ jobs:
         shell: pwsh
         run: |
           $env:QT_QPA_PLATFORM = 'offscreen'
-          python -m unittest discover -s tests -v
+          python -m unittest discover -s tests -v 2>&1 | Tee-Object -FilePath test-output.log
+          if ($LASTEXITCODE -ne 0) {
+            $detail = (Get-Content test-output.log -Raw)
+            $detail = $detail.Substring(0, [Math]::Min(12000, $detail.Length)).Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Desktop test failure::$detail"
+            exit 1
+          }
       - name: Package portable native EXE and OCR files
         shell: pwsh
         run: |
