@@ -46,6 +46,8 @@ class ImageTests(unittest.TestCase):
             self.assertEqual(store.load().scan_mode, "PLATE")
             store.path.write_text("garbled")
             self.assertEqual(store.load(), Settings())
+            store.path.write_text("[]")
+            self.assertEqual(store.load(), Settings())
 
     def test_capture_stores_both_full_frame_and_honest_crop(self):
         with TemporaryDirectory() as tmp:

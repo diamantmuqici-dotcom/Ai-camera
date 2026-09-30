@@ -104,6 +104,23 @@ jobs:
             Compress-Archive -Path 'desktop/dist/ClarityCam/*' -DestinationPath 'desktop/ClarityCam-V2-Windows.zip' -Force
             if (-not (Test-Path 'desktop/ClarityCam-V2-Windows.zip')) { Report-Failure 'Portable zip was not produced' }
           } catch { Report-Failure $_.Exception.Message }
+      - name: Smoke-test bundled EXE and offline OCR
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $env:CLARITY_SMOKE_LOG = Join-Path (Resolve-Path desktop).Path 'smoke.log'
+          $proc = Start-Process -FilePath 'desktop/dist/ClarityCam/ClarityCam.exe' -ArgumentList '--smoke-test' -PassThru
+          if (-not $proc.WaitForExit(40000)) {
+            $proc.Kill()
+            Write-Output '::error title=Packaged app smoke test::EXE timed out before drawing a window'
+            exit 1
+          }
+          if ($proc.ExitCode -ne 0) {
+            $detail = if (Test-Path $env:CLARITY_SMOKE_LOG) { Get-Content $env:CLARITY_SMOKE_LOG -Raw } else { "EXE exited with code $($proc.ExitCode) before writing diagnostics" }
+            $detail = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Packaged app smoke test::$detail"
+            exit 1
+          }
       - name: Upload portable Windows app
         uses: actions/upload-artifact@v4
         with:

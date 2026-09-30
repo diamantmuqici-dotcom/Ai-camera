@@ -79,11 +79,15 @@ def parse_tesseract(data: dict, width: int, height: int, mode: str) -> list[Dete
         kind = "PLATE" if looks_like_plate(text, (right - x) / max(1, bottom - y)) else "TEXT"
         if mode == "PLATE" and kind != "PLATE":
             continue
+        left = max(0.0, min(1.0, x / width))
+        top = max(0.0, min(1.0, y / height))
+        right_normalized = max(left, min(1.0, right / width))
+        bottom_normalized = max(top, min(1.0, bottom / height))
+        if right_normalized == left or bottom_normalized == top:
+            continue
         found.append(Detection(
-            text=text, x=max(0.0, x / width), y=max(0.0, y / height),
-            width=min(1.0 - max(0.0, x / width), (right - x) / width),
-            height=min(1.0 - max(0.0, y / height), (bottom - y) / height),
-            confidence=confidence, kind=kind,
+            text=text, x=left, y=top, width=right_normalized - left,
+            height=bottom_normalized - top, confidence=confidence, kind=kind,
         ))
     return sorted(found, key=lambda item: (-item.confidence, item.y))[:10]
 

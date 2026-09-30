@@ -26,6 +26,8 @@ class Settings:
     @classmethod
     def from_dict(cls, values: dict) -> Settings:
         defaults = cls()
+        if not isinstance(values, dict):
+            return defaults
         allowed = {field.name for field in fields(cls)}
         values = {key: value for key, value in values.items() if key in allowed}
         try:

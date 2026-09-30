@@ -59,4 +59,4 @@ desktop/tests/                   Python unittest suite and offscreen Qt smoke te
 .github/workflows/native-v2.yml  Build and upload .apk and Windows EXE zip
 ```
 
-The removed V1 browser/PWA had a black preview on some devices. V2 does not depend on browser camera permissions, service workers, HTTPS or a hosted site; on actual hardware it still needs OS camera access and a functioning sensor.
+The removed V1 browser/PWA had a black preview on some devices. V2 does not depend on browser camera permissions, service workers, HTTPS or a hosted site; on actual hardware it still needs OS camera access and a functioning sensor. Photos saved inside the old browser's IndexedDB gallery do **not** migrate automatically; export them from V1 before removing its browser data.

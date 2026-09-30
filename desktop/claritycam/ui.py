@@ -530,6 +530,8 @@ class MainWindow(QMainWindow):
         self._last_frame_time = time.monotonic()
         self.fps_label.setText("— FPS")
         self.tracker.reset()
+        self._last_target = None
+        self.target_label.setText("Waiting for live camera…")
         self.preview.clear()
         self.preview.set_state("OPENING CAMERA", "Checking the camera device and requesting live frames…")
         self.status_label.setText("CONNECTING")
@@ -544,6 +546,8 @@ class MainWindow(QMainWindow):
         self.status_label.setText(state.upper())
         self.status_label.setToolTip(message)
         if state == "error":
+            self._last_target = None
+            self.target_label.setText("No live camera • check permission / device")
             self.preview.clear()
             self.preview.set_state("CAMERA NEEDS ATTENTION", message + "  Photos and OCR need a live camera.", retry=True)
             self.fps_label.setText("NO FEED")
