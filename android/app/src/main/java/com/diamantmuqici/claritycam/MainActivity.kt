@@ -234,8 +234,8 @@ class MainActivity : ComponentActivity(), CameraController.Listener {
             "0.5 times unavailable because the camera does not expose an ultrawide lens"
         listOf(ui.zoom1 to 1f, ui.zoom2 to 2f, ui.zoom4 to 4f, ui.zoom8 to 8f)
             .forEach { (control, zoom) ->
-                // Even when on a separate wide lens, the main lens can offer its own range.
-                control.isEnabled = zoom <= availableMax + .02f || value < 1f
+                // The controller reports the main-lens range, even while ultrawide is selected.
+                control.isEnabled = zoom <= availableMax + .02f
                 control.alpha = if (control.isEnabled) 1f else .35f
             }
         listOf(ui.zoom05 to .5f, ui.zoom1 to 1f, ui.zoom2 to 2f, ui.zoom4 to 4f,
@@ -257,7 +257,8 @@ class MainActivity : ComponentActivity(), CameraController.Listener {
         ui.overlay.show(shown, width, height, front)
         lastTarget = shown.firstOrNull()
         val wasDark = nearBlackFrames >= 3
-        nearBlackFrames = if (light < 4f) nearBlackFrames + 1 else 0
+        // YUV limited-range black is near 16 rather than 0.
+        nearBlackFrames = if (light < 24f) nearBlackFrames + 1 else 0
         if (nearBlackFrames >= 3) hint("Almost black camera frames • check lens cover, privacy switch and lighting")
         else if (wasDark) hint("Camera view restored • scanning locally")
         ui.scanResult.text = if (nearBlackFrames >= 3) "CAMERA FRAMES DARK  /  CHECK LENS"

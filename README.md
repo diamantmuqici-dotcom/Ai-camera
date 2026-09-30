@@ -29,7 +29,7 @@ A text line resembling a plate is not a dedicated plate-object detector; plates 
 
 ## Privacy
 
-Camera frames and photos stay on the device. The Android manifest requests **CAMERA only** (no INTERNET, location, microphone or photo-library read permission). Windows OCR is bundled into the portable app; there is no runtime model download or intentional network/analytics code. Android photos are visible to other gallery apps through MediaStore. Windows JSON sidecars contain the locally recognized text: delete the JPEGs and sidecars together to erase a capture. No cloud sync is provided.
+Camera frames and photos stay on the device. The Android manifest requests **CAMERA only** (no INTERNET, location, microphone or photo-library read permission). Windows OCR is bundled into the portable app; there is no runtime model download or intentional network/analytics code. Android photos are visible to other gallery apps through MediaStore. Windows JSON sidecars contain the locally recognized text: delete the JPEGs and sidecars together to erase a capture. No cloud sync is provided. Third-party licenses and sources are listed in [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## Build / test from source
 

@@ -101,6 +101,8 @@ jobs:
               --distpath desktop/dist --workpath desktop/build --specpath desktop 2>&1 | Tee-Object -FilePath desktop/package-output.log -Append
             if ($LASTEXITCODE -ne 0) { Report-Failure ((Get-Content desktop/package-output.log -Tail 28) -join "`n") }
             if (-not (Test-Path 'desktop/dist/ClarityCam/ClarityCam.exe')) { Report-Failure 'EXE was not produced' }
+            Copy-Item README.md, THIRD_PARTY.md -Destination 'desktop/dist/ClarityCam/'
+            Copy-Item -Recurse desktop/licenses 'desktop/dist/ClarityCam/licenses'
             Compress-Archive -Path 'desktop/dist/ClarityCam/*' -DestinationPath 'desktop/ClarityCam-V2-Windows.zip' -Force
             if (-not (Test-Path 'desktop/ClarityCam-V2-Windows.zip')) { Report-Failure 'Portable zip was not produced' }
           } catch { Report-Failure $_.Exception.Message }

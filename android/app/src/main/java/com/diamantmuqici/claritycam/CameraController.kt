@@ -70,6 +70,8 @@ class CameraController(
     private var mainId: String? = null
     private var ultrawide: WideLens? = null
     private var logicalHalf = false
+    private var logicalMinimum = 1f
+    private var mainMaximum = 1f
     private var front = false
     private var usingWide = false
     private var wantedZoom = 1f
@@ -125,7 +127,9 @@ class CameraController(
             val factor = focal / reference
             if (factor in .35f.. .57f) WideLens(id, factor) else null
         }.minByOrNull { it.factor }
-        logicalHalf = (primary.zoomState.value?.minZoomRatio ?: 1f) <= .55f
+        logicalMinimum = primary.zoomState.value?.minZoomRatio ?: 1f
+        mainMaximum = primary.zoomState.value?.maxZoomRatio ?: 1f
+        logicalHalf = logicalMinimum <= .55f
     }
 
     private fun selectFps(id: String?, fps: Int): Range<Int>? {
@@ -205,11 +209,15 @@ class CameraController(
             val info = bound.cameraInfo
             val observer = Observer<ZoomState> { state ->
                 if (generation == localGeneration && state != null) {
-                    if (!front && !usingWide) logicalHalf = state.minZoomRatio <= .55f
+                    if (!front && !usingWide) {
+                        logicalMinimum = state.minZoomRatio
+                        mainMaximum = state.maxZoomRatio
+                        logicalHalf = logicalMinimum <= .55f
+                    }
                     val base = if (usingWide) ultrawide?.factor ?: .5f else 1f
                     val current = state.zoomRatio * base
                     wantedZoom = current
-                    listener.onZoom(current, state.maxZoomRatio * base,
+                    listener.onZoom(current, if (usingWide) mainMaximum else state.maxZoomRatio,
                         !front && (logicalHalf || ultrawide != null), info.hasFlashUnit())
                 }
             }
@@ -236,10 +244,11 @@ class CameraController(
         if (value < .85f && !front) {
             if (!logicalHalf && ultrawide == null) { listener.onHint("0.5× needs an exposed physical ultrawide camera."); return }
             if (logicalHalf) {
-                if (usingWide) { usingWide = false; wantedZoom = .5f; bind() }
+                val half = .5f.coerceAtLeast(logicalMinimum)
+                if (usingWide) { usingWide = false; wantedZoom = half; bind() }
                 else {
-                    wantedZoom = .5f
-                    camera?.cameraControl?.setZoomRatio(.5f)
+                    wantedZoom = half
+                    camera?.cameraControl?.setZoomRatio(half)
                 }
             } else {
                 if (!usingWide) { usingWide = true; wantedZoom = ultrawide!!.factor; bind() }

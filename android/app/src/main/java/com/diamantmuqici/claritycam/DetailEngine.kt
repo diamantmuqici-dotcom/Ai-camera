@@ -6,7 +6,6 @@ import android.graphics.Matrix
 import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
 import kotlin.math.abs
-import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
