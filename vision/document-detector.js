@@ -1,1 +1,0 @@
-"use strict";window.DocumentDetector={estimate(edges){if(!edges)return null;return {available:false,reason:"No ML document model bundled; use camera guidance fallback"}}};

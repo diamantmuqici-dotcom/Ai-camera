@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#0B0F14</color>
+    <color name="surface">#121B22</color>
+    <color name="mint">#B8F7C8</color>
+    <color name="pale">#EFF9F4</color>
+    <color name="muted">#A2B5BB</color>
+    <color name="amber">#FFE4A3</color>
+</resources>

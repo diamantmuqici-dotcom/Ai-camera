@@ -1,1 +1,0 @@
-"use strict";class CarTracker extends SubjectTracker{constructor(){super();this.type="car"}}window.CarTracker=CarTracker;

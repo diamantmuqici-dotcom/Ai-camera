@@ -1,1 +1,0 @@
-"use strict";window.DeviceReport={build(){return {...DeviceProfile.summary(),webGPU:!!navigator.gpu,workers:typeof Worker==="function",offscreenCanvas:"OffscreenCanvas"in window,mediaRecorder:"MediaRecorder"in window,imageCapture:"ImageCapture"in window,indexedDB:"indexedDB"in window}}};

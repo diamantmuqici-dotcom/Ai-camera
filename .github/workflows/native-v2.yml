@@ -1,0 +1,84 @@
+name: Build ClarityCam V2 native apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "arena/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android APK + unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Install Android 35 SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Test and assemble debug APK
+        working-directory: android
+        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClarityCam-V2-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  windows:
+    name: Windows EXE + unit/UI tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: desktop/requirements.txt
+      - name: Install Python dependencies
+        run: |
+          python -m pip install -r desktop/requirements.txt
+          python -m pip install pyinstaller==6.16.0 'pillow>=11,<12'
+        shell: bash
+      - name: Install offline OCR runtime
+        shell: pwsh
+        run: |
+          choco install tesseract -y --no-progress
+          $ocr = Join-Path $env:ProgramFiles 'Tesseract-OCR'
+          if (-not (Test-Path (Join-Path $ocr 'tesseract.exe'))) { throw 'Tesseract binary was not installed' }
+          if (-not (Test-Path (Join-Path $ocr 'tessdata/eng.traineddata'))) { throw 'English OCR model was not installed' }
+          Write-Host "Bundling on-device OCR from $ocr"
+      - name: Run deterministic and headless UI tests
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          python -m unittest discover -s tests -v
+      - name: Package portable native EXE and OCR files
+        shell: pwsh
+        run: |
+          python desktop/tools/make_icon.py
+          $ocr = Join-Path $env:ProgramFiles 'Tesseract-OCR'
+          pyinstaller --noconfirm --clean --onedir --windowed --name ClarityCam `
+            --icon desktop/assets/clarity.ico --add-data "$ocr;tesseract" desktop/run.py `
+            --distpath desktop/dist --workpath desktop/build --specpath desktop
+          if (-not (Test-Path 'desktop/dist/ClarityCam/ClarityCam.exe')) { throw 'EXE was not produced' }
+          Compress-Archive -Path 'desktop/dist/ClarityCam/*' -DestinationPath 'desktop/ClarityCam-V2-Windows.zip' -Force
+      - name: Upload portable Windows app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClarityCam-V2-Windows-EXE
+          path: desktop/ClarityCam-V2-Windows.zip
+          if-no-files-found: error
+          compression-level: 0
