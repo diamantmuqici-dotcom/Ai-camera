@@ -205,6 +205,45 @@ Camera access requires a secure context such as HTTPS or localhost.
 
 Enable GitHub Pages from the repository's **Settings → Pages** section and deploy the `main` branch.
 
+## Releases
+
+Releases are cut from `package.json` and driven by git tags. Pushing a `v*` tag
+runs `.github/workflows/android-apk.yml`, which builds the debug APK and publishes
+it as a GitHub release.
+
+1. Update `version` in `package.json`.
+2. Update `app.js` (`window.PixelCameraApp.version`) to match.
+3. Bump the `CACHE` constant in `service-worker.js` so returning visitors pick up
+   the new assets.
+4. Add an entry to `CHANGELOG.md`.
+5. Commit, merge to `main`, then tag and push:
+
+```bash
+git tag "v$(node -p "require('./package.json').version")"
+git push origin "v$(node -p "require('./package.json').version")"
+```
+
+The workflow refuses to build a tag whose version does not match
+`package.json`, so the two cannot drift apart.
+
+### Android build notes
+
+Capacitor requires a dedicated web directory, so the PWA is staged into `www/`
+before every sync:
+
+```bash
+npm install
+npm run build:web    # stages www/ and verifies service worker assets
+npx cap add android  # generated once; android/ is gitignored
+npm run cap:sync
+```
+
+`www/`, `android/` and `ios/` are generated artifacts and are gitignored. Use
+`npm run cap:open` to work on the native project in Android Studio.
+
+Capacitor 8 requires **Node >= 22** and **JDK 21**; the generated project targets
+`compileSdk 36` with Android Gradle Plugin 8.13 and Gradle 8.14.3.
+
 ## Development principles
 
 - Preserve working behavior before replacing it.

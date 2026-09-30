@@ -1,1 +1,10 @@
-{"appId":"com.diamantmuqici.pixelai.camera","appName":"Pixel AI Camera","webDir":".","bundledWebRuntime":false,"server":{"androidScheme":"https","cleartext":false}}
+{
+  "appId": "com.diamantmuqici.pixelai.camera",
+  "appName": "Pixel AI Camera",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  }
+}
