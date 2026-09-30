@@ -1,1 +1,23 @@
-{"name":"pixel-ai-camera","version":"1.0.0","private":true,"description":"Local-first computational camera PWA and optional Android wrapper","scripts":{"cap:add":"cap add android","cap:sync":"cap sync","cap:open":"cap open android","cap:doctor":"cap doctor"},"dependencies":{"@capacitor/android":"latest","@capacitor/core":"latest"},"devDependencies":{"@capacitor/cli":"latest"}}
+{
+  "name": "pixel-ai-camera",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Local-first computational camera PWA and optional Android wrapper",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:web": "node scripts/build-web.mjs",
+    "cap:add": "npm run build:web && cap add android",
+    "cap:sync": "npm run build:web && cap sync android",
+    "cap:open": "cap open android",
+    "cap:doctor": "cap doctor"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}

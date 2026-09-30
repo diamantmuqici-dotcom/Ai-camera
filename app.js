@@ -1,7 +1,7 @@
 "use strict";
 
 window.PixelCameraApp=Object.freeze({
-  version:"rework-2026-09",
+  version:"2.0.0",
   serviceWorkerSupported:"serviceWorker" in navigator,
   async install(){
     if(!this.serviceWorkerSupported||location.protocol==="file:") return null;

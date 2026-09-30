@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Capacitor native projects — generated with `npx cap add android`
+android/
+ios/
+
+# Staged web build output — generated with `npm run build:web`
+www/
+
+# Build artifacts
+dist/
+build/
+coverage/
+
+# Logs and OS noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

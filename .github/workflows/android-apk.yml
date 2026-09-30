@@ -1,38 +1,178 @@
 name: Build Android APK
+
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (defaults to package.json version)"
+        required: false
+        type: string
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - ".github/workflows/android-apk.yml"
+      - "package.json"
+      - "capacitor.config.json"
+      - "scripts/**"
+
 permissions:
   contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+
+      # Capacitor 8 ships AGP 8.13 / Gradle 8.14.3, which require JDK 21.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          INPUT_VERSION="${{ github.event.inputs.version || '' }}"
+          TAG_VERSION=""
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          VERSION="${TAG_VERSION:-${INPUT_VERSION:-$PKG_VERSION}}"
+
+          if [ -n "$TAG_VERSION" ] && [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${PKG_VERSION}"
+            exit 1
+          fi
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '${VERSION}' is not valid semver X.Y.Z"
+            exit 1
+          fi
+
+          MAJOR="${VERSION%%.*}"
+          REST="${VERSION#*.}"
+          MINOR="${REST%%.*}"
+          PATCH="${REST#*.}"
+          CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "code=${CODE}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building ${VERSION} (versionCode ${CODE})"
+
+      # Capacitor rejects "." / "./" as webDir, so the PWA is staged into www/ first.
+      - name: Stage web assets
+        run: npm run build:web
+
       - name: Create Android project
-        run: npx cap add android
+        run: |
+          if [ -d android ]; then
+            echo "Android project already present; reusing it"
+          else
+            npx cap add android
+          fi
+
+      - name: Resolve Android SDK target
+        id: sdk
+        run: |
+          set -euo pipefail
+          COMPILE_SDK="$(sed -n 's/.*compileSdkVersion *= *\([0-9]*\).*/\1/p' android/variables.gradle | head -n1)"
+          if [ -z "$COMPILE_SDK" ]; then
+            echo "::error::Could not read compileSdkVersion from android/variables.gradle"
+            exit 1
+          fi
+          echo "compile_sdk=${COMPILE_SDK}" >> "$GITHUB_OUTPUT"
+          echo "build_tools=${COMPILE_SDK}.0.0" >> "$GITHUB_OUTPUT"
+          echo "Capacitor requires compileSdk ${COMPILE_SDK}"
+
+      - name: Install Android SDK packages
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
+          echo "ANDROID_HOME=${SDK_ROOT}" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${SDK_ROOT}" >> "$GITHUB_ENV"
+          SM="$(command -v sdkmanager || true)"
+          if [ -z "$SM" ]; then
+            SM="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          if [ ! -x "$SM" ]; then
+            echo "::error::Android sdkmanager not found (looked for '${SM}')"
+            exit 1
+          fi
+          yes | "$SM" --sdk_root="$SDK_ROOT" --licenses >/dev/null 2>&1 || true
+          "$SM" --sdk_root="$SDK_ROOT" --install \
+            "platform-tools" \
+            "platforms;android-${{ steps.sdk.outputs.compile_sdk }}" \
+            "build-tools;${{ steps.sdk.outputs.build_tools }}"
+
+      - name: Apply version to Android build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          set -euo pipefail
+          GRADLE_FILE="android/app/build.gradle"
+          sed -i -E \
+            -e "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/" \
+            -e "s/versionName \"[^\"]*\"/versionName \"${VERSION}\"/" \
+            "$GRADLE_FILE"
+          grep -q "versionCode ${VERSION_CODE}" "$GRADLE_FILE" || { echo "::error::versionCode not applied"; exit 1; }
+          grep -q "versionName \"${VERSION}\"" "$GRADLE_FILE" || { echo "::error::versionName not applied"; exit 1; }
+          echo "Android build now targets ${VERSION} (versionCode ${VERSION_CODE})"
+
       - name: Sync web app
         run: npx cap sync android
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/variables.gradle', 'android/build.gradle') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Collect APK
+        id: apk
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p dist
+          APK="dist/pixel-ai-camera-${VERSION}-debug.apk"
+          cp "android/app/build/outputs/apk/debug/app-debug.apk" "$APK"
+          echo "path=${APK}" >> "$GITHUB_OUTPUT"
+          ls -lh "$APK"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: pixel-ai-camera-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: pixel-ai-camera-${{ steps.version.outputs.version }}-debug-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
       - name: Publish tagged release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Pixel AI Camera ${{ steps.version.outputs.tag }}
+          files: ${{ steps.apk.outputs.path }}
           generate_release_notes: true
